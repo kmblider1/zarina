@@ -1,0 +1,12 @@
+# Netlify sozlamasi — statik frontend demo
+# Loyiha bitta index.html (build kerak emas).
+[build]
+  publish = "."
+  command = ""
+
+# Xavfsizlik: PHP backend fayllari Netlify'da ishlamaydi, ularni yopib qo'yamiz
+[[redirects]]
+  from = "/api/*"
+  to = "/index.html"
+  status = 404
+  force = true
