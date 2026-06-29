@@ -1,0 +1,16 @@
+# Barcha /api/* so'rovlarni index.php ga yo'naltirish
+RewriteEngine On
+RewriteBase /api/
+
+# Mavjud fayl yoki papka bo'lsa — to'g'ridan-to'g'ri ber
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Aks holda index.php ga (yo'lni PATH_INFO sifatida uzatamiz)
+RewriteRule ^(.*)$ index.php/$1 [L,QSA]
+
+# config.php va boshqa maxfiy fayllarni yopish
+<FilesMatch "^(config\.php|config\.example\.php|lib\.php|ai\.php)$">
+  Require all denied
+</FilesMatch>

@@ -213,6 +213,42 @@ const state = {
 };
 state.chatMessages = [{ type:'ai', text:I18N[state.lang].aiWelcome, time:'09:00' }];
 
+// ═══════════════════ BACKEND API ═══════════════════
+// http(s) da ishlaganda backend ulanadi; file:// da yoki backend bo'lmasa demo rejim.
+const API_BASE = location.protocol.startsWith('http') ? '/api' : null;
+let authToken = null;
+async function api(path, opts){
+  opts = opts || {};
+  const headers = { 'Content-Type':'application/json' };
+  if(authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  const res = await fetch(API_BASE + path, { ...opts, headers });
+  if(!res.ok){ const e = new Error('API '+res.status); e.status = res.status; throw e; }
+  return res.json();
+}
+
+async function doLogin(){
+  if(!state.role){ alert('Rolni tanlang'); return; }
+  if(API_BASE){
+    try {
+      const r = await api('/auth/login', { method:'POST', body: JSON.stringify({ email:state.email, password:state.password, role:state.role }) });
+      authToken = r.token;
+      if(r.user && r.user.role) state.role = r.user.role;
+    } catch(e){
+      if(e.status === 401){ alert('Email yoki parol xato'); return; }
+      // boshqa xato (backend hali deploy qilinmagan) — demo rejimida davom etamiz
+    }
+  }
+  state.screen = state.role === 'student' ? 'consent' : 'dashboard';
+  render();
+}
+
+async function doConsent(){
+  if(!state.consentChecked) return;
+  if(API_BASE && authToken){ try { await api('/consent', { method:'POST', body: JSON.stringify({ agreed:true }) }); } catch(e){} }
+  state.screen = 'dashboard';
+  render();
+}
+
 const getLang = () => state.lang || 'uz';
 const getTheme = () => THEMES.indigo;
 const timeNow = () => new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
@@ -608,16 +644,22 @@ function render(){
   if(V.screen==='ai'){ const c=document.getElementById('pln-chat'); if(c) c.scrollTop=c.scrollHeight; }
 }
 
-function sendChat(){
+async function sendChat(){
   const msg=(state.chatInput||'').trim();
   if(!msg||state.isAITyping) return;
   const lang=getLang();
   state.chatMessages=[...state.chatMessages,{type:'user',text:msg,time:timeNow()}];
   state.chatInput=''; state.isAITyping=true; render();
-  setTimeout(()=>{
-    state.chatMessages=[...state.chatMessages,{type:'ai',text:getAIReply(msg,lang),time:timeNow()}];
+  let reply=null;
+  if(API_BASE && authToken){
+    try { const r = await api('/ai/chat', { method:'POST', body: JSON.stringify({ message:msg, lang }) }); reply = r.reply; } catch(e){}
+  }
+  const finish = () => {
+    state.chatMessages=[...state.chatMessages,{type:'ai',text:reply||getAIReply(msg,lang),time:timeNow()}];
     state.isAITyping=false; render();
-  }, 1000+Math.random()*800);
+  };
+  // backend javobi bo'lsa darhol, bo'lmasa qisqa "yozyapti" effekti bilan
+  if(reply!==null) finish(); else setTimeout(finish, 1000+Math.random()*800);
 }
 
 // ═══════════════════ EVENTS (delegation) ═══════════════════
@@ -630,8 +672,8 @@ document.addEventListener('click', e=>{
   switch(a){
     case 'lang': state.lang=el.dataset.lang; render(); break;
     case 'role': state.role=el.dataset.role; render(); break;
-    case 'login': if(state.role){ state.screen = state.role==='student'?'consent':'dashboard'; render(); } break;
-    case 'consentContinue': if(state.consentChecked){ state.screen='dashboard'; render(); } break;
+    case 'login': doLogin(); break;
+    case 'consentContinue': doConsent(); break;
     case 'goBack': state.screen='login'; render(); break;
     case 'vark': {
       const tp=el.dataset.type; const na=[...state.varkAnswers,tp];
