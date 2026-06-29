@@ -1,1950 +1,668 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PLN — Personal Learning Network</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Serif+Display:ital@0;1&display=swap');
-
-  :root {
-    --bg: #0e0f14;
-    --bg2: #15161e;
-    --bg3: #1c1d28;
-    --bg4: #242535;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.14);
-    --text: #e8e8f0;
-    --muted: #8a8a9e;
-    --dim: #4a4a62;
-    --accent: #7c6ef5;
-    --accent2: #5b50cc;
-    --green: #3ecf8e;
-    --amber: #f5a623;
-    --coral: #ff6b6b;
-    --teal: #38bdf8;
-    --purple: #c084fc;
-    --radius: 12px;
-    --radius-sm: 8px;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* LAYOUT */
-  .app { display: flex; height: 100vh; overflow: hidden; }
-
-  .sidebar {
-    width: 220px;
-    min-width: 220px;
-    background: var(--bg2);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 20px 0;
-  }
-
-  .logo {
-    padding: 0 20px 24px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
-  }
-  .logo-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 20px;
-    color: var(--text);
-    letter-spacing: -0.3px;
-  }
-  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 20px;
-    font-size: 13px;
-    color: var(--muted);
-    cursor: pointer;
-    border-left: 2px solid transparent;
-    transition: all 0.15s;
-  }
-  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
-  .nav-item.active {
-    color: var(--accent);
-    border-left-color: var(--accent);
-    background: rgba(124,110,245,0.08);
-  }
-  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-
-  .sidebar-footer {
-    margin-top: auto;
-    padding: 16px 20px;
-    border-top: 1px solid var(--border);
-  }
-  .user-chip {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--purple));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 600; color: white; flex-shrink: 0;
-  }
-  .user-name { font-size: 13px; font-weight: 500; }
-  .user-level { font-size: 11px; color: var(--green); }
-
-  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-
-  /* TOP BAR */
-  .topbar {
-    padding: 16px 28px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--bg);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .topbar-title { font-size: 16px; font-weight: 500; flex: 1; }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 500;
-  }
-  .badge-purple { background: rgba(192,132,252,0.15); color: var(--purple); }
-  .badge-green { background: rgba(62,207,142,0.15); color: var(--green); }
-  .badge-amber { background: rgba(245,166,35,0.15); color: var(--amber); }
-  .badge-teal { background: rgba(56,189,248,0.15); color: var(--teal); }
-
-  /* CONTENT */
-  .content { padding: 24px 28px; flex: 1; }
-
-  /* VIEWS */
-  .view { display: none; }
-  .view.active { display: block; }
-
-  /* DASHBOARD */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-    margin-bottom: 24px;
-  }
-  .stat-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px;
-  }
-  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-  .stat-val { font-size: 26px; font-weight: 600; line-height: 1; }
-  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .stat-trend { font-size: 12px; margin-top: 4px; }
-  .up { color: var(--green); }
-  .down { color: var(--coral); }
-
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-  }
-  .card-title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
-  }
-
-  /* LEARNER TYPE */
-  .learner-type-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-  .learner-type-icon { font-size: 22px; }
-  .learner-type-name { font-size: 14px; font-weight: 500; }
-  .learner-type-desc { font-size: 12px; color: var(--muted); }
-  .progress-bar-wrap { flex: 1; }
-  .progress-bar {
-    height: 6px;
-    background: var(--bg4);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.8s ease;
-  }
-
-  /* NODE GRAPH */
-  #node-graph { width: 100%; height: 280px; }
-  .node-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-  /* SOURCES / ADD */
-  .source-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 14px;
-    margin-bottom: 24px;
-  }
-  .source-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    cursor: pointer;
-    transition: border-color 0.2s, transform 0.15s;
-  }
-  .source-card:hover { border-color: var(--border2); transform: translateY(-1px); }
-  .source-card.selected { border-color: var(--accent); background: rgba(124,110,245,0.06); }
-  .source-type { font-size: 11px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-  .source-title { font-size: 14px; font-weight: 500; margin-bottom: 6px; line-height: 1.3; }
-  .source-meta { font-size: 12px; color: var(--muted); }
-  .source-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-  .tag {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 20px;
-    border: 1px solid var(--border2);
-    color: var(--muted);
-  }
-
-  /* FORM */
-  .form-group { margin-bottom: 16px; }
-  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
-  input, textarea, select {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 10px 14px;
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
-  textarea { resize: vertical; min-height: 80px; }
-  select option { background: var(--bg3); }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 18px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    border: none;
-    transition: all 0.15s;
-  }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-primary:hover { background: var(--accent2); }
-  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
-  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
-  .btn-sm { padding: 6px 12px; font-size: 12px; }
-
-  /* AI INSIGHT BOX */
-  .ai-insight {
-    background: linear-gradient(135deg, rgba(124,110,245,0.1), rgba(192,132,252,0.06));
-    border: 1px solid rgba(124,110,245,0.25);
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 20px;
-  }
-  .ai-insight-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .ai-badge { background: var(--accent); color: white; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
-  .ai-text { font-size: 14px; line-height: 1.6; color: var(--text); }
-
-  /* SDL TRACKER */
-  .sdl-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 20px; }
-  .day-cell {
-    aspect-ratio: 1;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    font-size: 10px;
-    cursor: pointer;
-    transition: transform 0.1s;
-    border: 1px solid var(--border);
-  }
-  .day-cell:hover { transform: scale(1.1); }
-  .day-label { color: var(--muted); margin-bottom: 4px; font-size: 9px; }
-  .day-score { font-weight: 600; font-size: 13px; }
-
-  /* TEACHER DASHBOARD */
-  .student-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.15s;
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-  }
-  .student-row:hover { background: rgba(255,255,255,0.03); }
-  .student-name { font-size: 14px; font-weight: 500; flex: 1; }
-  .student-level { font-size: 12px; color: var(--muted); }
-  .mini-bar {
-    width: 80px;
-    height: 4px;
-    background: var(--bg4);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .mini-fill { height: 100%; border-radius: 2px; }
-
-  /* LOADING */
-  .loading-overlay {
-    position: fixed; inset: 0;
-    background: rgba(14,15,20,0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    backdrop-filter: blur(4px);
-  }
-  .loading-box {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 32px 40px;
-    text-align: center;
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 16px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 14px; color: var(--muted); }
-
-  /* RESPONSE */
-  .response-card {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-top: 16px;
-  }
-  .response-card p { font-size: 14px; line-height: 1.7; color: var(--text); margin-bottom: 10px; }
-  .response-card p:last-child { margin-bottom: 0; }
-
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
-
-  /* TOOLTIP */
-  .tooltip {
-    position: absolute;
-    background: var(--bg4);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    padding: 8px 12px;
-    font-size: 12px;
-    pointer-events: none;
-    z-index: 50;
-    max-width: 200px;
-    line-height: 1.4;
-  }
-
-  /* SCREEN TIME */
-  .app-icon {
-    width: 36px; height: 36px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
-  }
-  .risk-dot {
-    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  }
-  .alert-banner {
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    display: flex; align-items: flex-start; gap: 12px;
-    margin-bottom: 12px;
-  }
-  .alert-red { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.25); }
-  .alert-amber { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.25); }
-  .alert-green { background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.25); }
-  .donut-wrap { position: relative; width: 120px; height: 120px; flex-shrink:0; }
-  .donut-label {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    font-size: 20px; font-weight: 600;
-    line-height: 1.1;
-  }
-  .donut-sub { font-size: 10px; color: var(--muted); }
-  .time-heatmap { display: grid; grid-template-columns: repeat(24,1fr); gap: 2px; }
-  .heat-cell {
-    height: 20px; border-radius: 2px;
-    transition: opacity 0.2s;
-  }
-  .heat-cell:hover { opacity: 0.7; }
-  .student-tab {
-    padding: 6px 14px; border-radius: 20px; font-size: 12px;
-    cursor: pointer; border: 1px solid var(--border);
-    color: var(--muted); transition: all 0.15s; white-space: nowrap;
-  }
-  .student-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
-  .student-tab:hover:not(.active) { border-color: var(--border2); color: var(--text); }
-  .platform-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px; border-radius: var(--radius-sm);
-    transition: background 0.15s; cursor: default;
-  }
-  .platform-row:hover { background: rgba(255,255,255,0.03); }
-  .limit-input {
-    width: 60px; padding: 4px 8px; font-size: 12px;
-    text-align: center; border-radius: 6px;
-  }
-
-  .sep { height: 1px; background: var(--border); margin: 20px 0; }
-  .flex { display: flex; }
-  .gap-8 { gap: 8px; }
-  .gap-12 { gap: 12px; }
-  .items-center { align-items: center; }
-  .justify-between { justify-content: space-between; }
-  .mb-16 { margin-bottom: 16px; }
-  .mb-20 { margin-bottom: 20px; }
-
-  /* ───── AUTH (Kirish / Rol / Rozilik) ───── */
-  .auth-overlay {
-    position: fixed; inset: 0; z-index: 200;
-    background:
-      radial-gradient(circle at 20% 20%, rgba(124,110,245,0.18), transparent 40%),
-      radial-gradient(circle at 80% 80%, rgba(56,189,248,0.12), transparent 40%),
-      var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px; overflow-y: auto;
-  }
-  .auth-card {
-    width: 100%; max-width: 440px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 32px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
-  }
-  .auth-logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 30px; text-align: center; letter-spacing: -0.5px;
-  }
-  .auth-logo-sub { text-align: center; color: var(--muted); font-size: 13px; margin: 4px 0 26px; }
-  .auth-step-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-  .auth-step-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
-
-  .role-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 22px; }
-  .role-card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 10px; text-align: center; cursor: pointer;
-    transition: all 0.15s; background: var(--bg3);
-  }
-  .role-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-  .role-card.selected { border-color: var(--accent); background: rgba(124,110,245,0.1); }
-  .role-icon { font-size: 26px; margin-bottom: 8px; }
-  .role-name { font-size: 13px; font-weight: 500; }
-
-  .auth-hint { text-align: center; font-size: 12px; color: var(--dim); margin-top: 18px; }
-
-  /* Consent (rozilik) */
-  .consent-box {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px; margin-bottom: 18px;
-    max-height: 220px; overflow-y: auto;
-  }
-  .consent-item { display: flex; gap: 10px; font-size: 13px; color: var(--text); margin-bottom: 12px; line-height: 1.5; }
-  .consent-item:last-child { margin-bottom: 0; }
-  .consent-item .ci-icon { flex-shrink: 0; }
-  .consent-check {
-    display: flex; align-items: flex-start; gap: 10px;
-    font-size: 13px; color: var(--text); cursor: pointer; margin-bottom: 18px; line-height: 1.5;
-  }
-  .consent-check input { width: auto; margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{0%,80%,100%{opacity:0.15}40%{opacity:1}}
+  input,textarea,select{font-family:inherit}
+  button{font-family:inherit;cursor:pointer;border:none;outline:none;background:none;padding:0}
+  textarea{resize:none}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  /* Hover holatlari (inline style framework o'rniga CSS bilan) */
+  .hov-lift{transition:transform .15s,border-color .15s,background .15s}
+  .hov-lift:hover{transform:translateY(-2px)}
+  .hov-op{transition:opacity .15s,transform .15s}
+  .hov-op:hover{opacity:.88}
+  .nav-btn{transition:background .15s}
+  .nav-btn:hover{background:var(--nav-hover)}
+  .opt-btn:hover{filter:brightness(.985)}
+  .sug-btn{transition:all .15s}
+  .row-hov:hover{background:var(--content-bg)}
+  .kg-node{transition:all .2s}
+  input:focus,textarea:focus{border-color:var(--primary)!important;background:#fff!important}
 </style>
 </head>
 <body>
-
-<div id="loading" class="loading-overlay" style="display:none">
-  <div class="loading-box">
-    <div class="spinner"></div>
-    <div class="loading-text" id="loading-text">AI tahlil qilmoqda...</div>
-  </div>
-</div>
-
-<!-- ───── AUTH: Kirish / Rol tanlash / Rozilik ───── -->
-<div id="auth" class="auth-overlay">
-  <div class="auth-card">
-    <div class="auth-logo">PLN</div>
-    <div class="auth-logo-sub">Personal Learning Network · Shaxsiy O'rganish Tarmog'i</div>
-
-    <!-- 1-qadam: Kirish + rol tanlash -->
-    <div id="auth-step-login">
-      <div class="auth-step-title">Tizimga kirish</div>
-      <div class="auth-step-desc">Davom etish uchun rolingizni tanlang va ma'lumotlarni kiriting.</div>
-
-      <div class="role-grid">
-        <div class="role-card" data-role="talaba" onclick="selectRole('talaba')">
-          <div class="role-icon">🎓</div>
-          <div class="role-name">Talaba</div>
-        </div>
-        <div class="role-card" data-role="oqituvchi" onclick="selectRole('oqituvchi')">
-          <div class="role-icon">👨‍🏫</div>
-          <div class="role-name">O'qituvchi</div>
-        </div>
-        <div class="role-card" data-role="otaona" onclick="selectRole('otaona')">
-          <div class="role-icon">👨‍👩‍👧</div>
-          <div class="role-name">Ota-ona</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Email yoki login</label>
-        <input type="text" id="auth-email" placeholder="ism@example.com">
-      </div>
-      <div class="form-group">
-        <label>Parol</label>
-        <input type="password" id="auth-password" placeholder="••••••••">
-      </div>
-
-      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Kirish →</button>
-      <div class="auth-hint">Backend ulanmaguncha bu demo rejimida ishlaydi.</div>
-    </div>
-
-    <!-- 2-qadam: Rozilik (faqat talaba uchun) -->
-    <div id="auth-step-consent" style="display:none">
-      <div class="auth-step-title">Ekran vaqti nazoratiga rozilik</div>
-      <div class="auth-step-desc">
-        Tizimdan to'liq foydalanish uchun ekran vaqti monitoringiga rozilik berishingiz kerak.
-      </div>
-
-      <div class="consent-box">
-        <div class="consent-item"><span class="ci-icon">⏱️</span><span>Qaysi platforma va ilovaga qancha vaqt sarflaganingiz qayd etiladi.</span></div>
-        <div class="consent-item"><span class="ci-icon">📊</span><span>Vaqtingiz <strong style="color:var(--green)">foydali</strong> va <strong style="color:var(--coral)">chalg'ituvchi</strong> toifalarga ajratiladi.</span></div>
-        <div class="consent-item"><span class="ci-icon">👨‍🏫</span><span>Bu ma'lumotlar <strong>o'qituvchingiz va ota-onangizga</strong> ko'rinadi.</span></div>
-        <div class="consent-item"><span class="ci-icon">🔒</span><span>Ma'lumotlar faqat ta'lim maqsadida ishlatiladi. Rozilikni istalgan vaqt bekor qilishingiz mumkin.</span></div>
-      </div>
-
-      <label class="consent-check">
-        <input type="checkbox" id="consent-checkbox" onchange="toggleConsentBtn()">
-        <span>Yuqoridagilarni o'qidim va ekran vaqtim nazorat qilinishiga roziman.</span>
-      </label>
-
-      <button class="btn btn-primary" id="consent-btn" style="width:100%;opacity:0.5;pointer-events:none" onclick="doConsent()">Rozilik beraman va kiraman →</button>
-      <div class="auth-hint"><span style="cursor:pointer;text-decoration:underline" onclick="backToLogin()">← Ortga</span></div>
-    </div>
-  </div>
-</div>
-
-<div class="app" style="display:none">
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-title">PLN</div>
-      <div class="logo-sub">Personal Learning Network</div>
-    </div>
-    <nav>
-      <div class="nav-item active" onclick="showView('dashboard')">
-        <span class="nav-icon">◉</span> Dashboard
-      </div>
-      <div class="nav-item" onclick="showView('sources')">
-        <span class="nav-icon">◈</span> Manbalar
-      </div>
-      <div class="nav-item" onclick="showView('network')">
-        <span class="nav-icon">◎</span> Bilim tarmog'i
-      </div>
-      <div class="nav-item" onclick="showView('sdl')">
-        <span class="nav-icon">◐</span> SDL Tracker
-      </div>
-      <div class="nav-item" onclick="showView('ai')">
-        <span class="nav-icon">✦</span> AI Tavsiya
-      </div>
-      <div class="nav-item" onclick="showView('teacher')">
-        <span class="nav-icon">◧</span> O'qituvchi
-      </div>
-      <div class="nav-item" onclick="showView('screentime')">
-        <span class="nav-icon">⏱</span> Ekran vaqti
-      </div>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="user-chip">
-        <div class="avatar">OA</div>
-        <div>
-          <div class="user-name">O'quvchi</div>
-          <div class="user-level">B2 darajasi</div>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- MAIN -->
-  <main class="main">
-
-    <!-- DASHBOARD -->
-    <div id="view-dashboard" class="view active">
-      <div class="topbar">
-        <span class="topbar-title">Umumiy ko'rinish</span>
-        <span class="badge badge-green">✦ SDL Score: 82</span>
-        <span class="badge badge-purple">Visual Learner</span>
-      </div>
-      <div class="content">
-
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Nodes</div>
-            <div class="stat-val" style="color:var(--accent)">24</div>
-            <div class="stat-sub">Bilim tugunlari</div>
-            <div class="stat-trend up">↑ +3 bu hafta</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Manbalar</div>
-            <div class="stat-val" style="color:var(--teal)">47</div>
-            <div class="stat-sub">Jami resurslar</div>
-            <div class="stat-trend up">↑ +8 bu oy</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">O'rganish vaqti</div>
-            <div class="stat-val" style="color:var(--green)">142h</div>
-            <div class="stat-sub">Jami soatlar</div>
-            <div class="stat-trend up">↑ 4.2h/kun</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">SDL Competency</div>
-            <div class="stat-val" style="color:var(--amber)">82%</div>
-            <div class="stat-sub">O'z-o'zini boshqarish</div>
-            <div class="stat-trend up">↑ +12% oyda</div>
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="card">
-            <div class="card-title">O'rganish uslubi tahlili</div>
-            <div>
-              <div class="learner-type-row">
-                <span class="learner-type-icon">👁</span>
-                <div style="flex:1">
-                  <div class="learner-type-name">Visual</div>
-                  <div class="learner-type-desc">Video, infografika</div>
-                </div>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar"><div class="progress-fill" style="width:78%;background:var(--accent)"></div></div>
-                </div>
-                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">78%</span>
-              </div>
-              <div class="learner-type-row">
-                <span class="learner-type-icon">👂</span>
-                <div style="flex:1">
-                  <div class="learner-type-name">Auditory</div>
-                  <div class="learner-type-desc">Podcast, audio</div>
-                </div>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar"><div class="progress-fill" style="width:55%;background:var(--teal)"></div></div>
-                </div>
-                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">55%</span>
-              </div>
-              <div class="learner-type-row">
-                <span class="learner-type-icon">📖</span>
-                <div style="flex:1">
-                  <div class="learner-type-name">Reading</div>
-                  <div class="learner-type-desc">Maqola, kitob</div>
-                </div>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar"><div class="progress-fill" style="width:42%;background:var(--green)"></div></div>
-                </div>
-                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">42%</span>
-              </div>
-              <div class="learner-type-row">
-                <span class="learner-type-icon">🤝</span>
-                <div style="flex:1">
-                  <div class="learner-type-name">Kinesthetic</div>
-                  <div class="learner-type-desc">Amaliyot, mashq</div>
-                </div>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar"><div class="progress-fill" style="width:65%;background:var(--amber)"></div></div>
-                </div>
-                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">65%</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">SDL Kompetensiya o'sishi</div>
-            <canvas id="sdl-chart" height="160"></canvas>
-          </div>
-        </div>
-
-        <div class="ai-insight">
-          <div class="ai-insight-header">
-            <span class="ai-badge">✦ AI Tahlil</span>
-            <span style="font-size:12px;color:var(--muted)">Connectivism asosida</span>
-          </div>
-          <div class="ai-text" id="ai-dashboard-insight">
-            Siz <strong>Visual Learner</strong> siz — video va vizual manbalar orqali 78% samaraliroq o'rganyapsiz. 
-            Bu hafta "Grammar" va "Speaking" nodelari orasidagi bog'lanish kuchaydi. 
-            Tavsiya: Ingliz tilida <strong>YouTube explanations</strong> ni ko'proq ulang, so'ngra amaliyot (kinesthetic) bilan mustahkamlang. 
-            SDL skoringiz o'sib bormoqda — maqsad qo'yish va o'z-o'zini baholash ko'nikmalaringiz yaxshilanmoqda.
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Bilim tarmog'i (preview)</div>
-          <svg id="mini-graph" width="100%" height="200"></svg>
-          <div style="margin-top:10px;text-align:center">
-            <button class="btn btn-ghost btn-sm" onclick="showView('network')">To'liq ko'rish →</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SOURCES -->
-    <div id="view-sources" class="view">
-      <div class="topbar">
-        <span class="topbar-title">Manbalar</span>
-        <button class="btn btn-primary btn-sm" onclick="showAddSource()">+ Manba qo'shish</button>
-      </div>
-      <div class="content">
-
-        <div id="add-source-form" style="display:none" class="card mb-20">
-          <div class="card-title">Yangi manba qo'shish</div>
-          <div class="two-col" style="gap:12px;margin-bottom:12px">
-            <div class="form-group" style="margin:0">
-              <label>Sarlavha</label>
-              <input type="text" id="src-title" placeholder="Manba nomi...">
-            </div>
-            <div class="form-group" style="margin:0">
-              <label>Tur</label>
-              <select id="src-type">
-                <option value="youtube">📹 YouTube Video</option>
-                <option value="podcast">🎙 Podcast</option>
-                <option value="article">📄 Maqola</option>
-                <option value="book">📚 Kitob</option>
-                <option value="course">🎓 Kurs</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>URL yoki tavsif</label>
-            <input type="text" id="src-url" placeholder="https://...">
-          </div>
-          <div class="form-group">
-            <label>Qaysi node bilan bog'liq?</label>
-            <input type="text" id="src-node" placeholder="Grammar, Speaking, Vocabulary...">
-          </div>
-          <div style="display:flex;gap:10px">
-            <button class="btn btn-primary" onclick="analyzeSource()">✦ AI tahlil qil va qo'sh</button>
-            <button class="btn btn-ghost" onclick="hideAddSource()">Bekor</button>
-          </div>
-          <div id="source-ai-response"></div>
-        </div>
-
-        <div class="source-grid" id="source-list"></div>
-      </div>
-    </div>
-
-    <!-- NETWORK -->
-    <div id="view-network" class="view">
-      <div class="topbar">
-        <span class="topbar-title">Bilim tarmog'i vizualizatsiyasi</span>
-        <span class="badge badge-teal">Connectivism modeli</span>
-      </div>
-      <div class="content">
-        <div class="card mb-20" style="padding:0;overflow:hidden">
-          <div id="full-graph" style="height:420px;position:relative">
-            <svg id="network-svg" width="100%" height="420"></svg>
-            <div id="node-tooltip" class="tooltip" style="display:none"></div>
-          </div>
-          <div style="padding:16px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-            <div class="node-legend">
-              <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Grammatika</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Leksika</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>Speaking</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Listening</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--coral)"></div>Writing</div>
-            </div>
-            <div style="margin-left:auto;font-size:12px;color:var(--muted)">
-              Tugun o'lcham = o'rganish chuqurligi · Chiziq qalinligi = bog'lanish kuchi
-            </div>
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="card">
-            <div class="card-title">Kuchli bog'lanishlar</div>
-            <div id="strong-connections"></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Zaif bog'lanishlar (rivojlantirish kerak)</div>
-            <div id="weak-connections"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SDL TRACKER -->
-    <div id="view-sdl" class="view">
-      <div class="topbar">
-        <span class="topbar-title">SDL Tracker — O'z-o'zini boshqarish</span>
-        <span class="badge badge-green">Haftalik maqsad: 80%</span>
-      </div>
-      <div class="content">
-
-        <div class="two-col mb-20">
-          <div class="card">
-            <div class="card-title">Bu haftaning SDL faolligi</div>
-            <div class="sdl-week" id="sdl-week"></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
-              <span>Kam</span><span>Ko'p</span>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-title">Bugun nima o'rgandim?</div>
-            <div class="form-group">
-              <label>O'rganilgan mavzu</label>
-              <input type="text" id="sdl-topic" placeholder="Masalan: Present Perfect tense...">
-            </div>
-            <div class="form-group">
-              <label>Qayerdan o'rgandim?</label>
-              <select id="sdl-source">
-                <option>YouTube video</option>
-                <option>Podcast</option>
-                <option>Kitob/Maqola</option>
-                <option>O'qituvchi</option>
-                <option>Tengdoshdan</option>
-                <option>Amaliyot</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>O'z-o'zimni baholash (1-10)</label>
-              <input type="range" min="1" max="10" value="7" id="sdl-rating" oninput="document.getElementById('sdl-rating-val').textContent=this.value">
-              <div style="text-align:right;font-size:12px;color:var(--muted);margin-top:4px">Daraja: <span id="sdl-rating-val">7</span>/10</div>
-            </div>
-            <button class="btn btn-primary" style="width:100%" onclick="logSDL()">✦ AI bilan tahlil qil va yozib ol</button>
-            <div id="sdl-ai-response"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">SDL Kompetensiya o'lchovlari (Zimmerman modeli)</div>
-          <div id="sdl-dimensions"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- AI TAVSIYANOMA -->
-    <div id="view-ai" class="view">
-      <div class="topbar">
-        <span class="topbar-title">AI Tavsiya — Shaxsiy yo'l xaritasi</span>
-        <span class="badge badge-purple">✦ Claude AI</span>
-      </div>
-      <div class="content">
-        <div class="card mb-20">
-          <div class="card-title">Savolingizni yozing</div>
-          <div class="form-group">
-            <label>Darajangiz</label>
-            <select id="ai-level">
-              <option>A1 — Boshlang'ich</option>
-              <option>A2 — Elementar</option>
-              <option>B1 — O'rta</option>
-              <option selected>B2 — O'rta-yuqori</option>
-              <option>C1 — Ilg'or</option>
-              <option>C2 — Professional</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Maqsadingiz yoki savolingiz</label>
-            <textarea id="ai-question" placeholder="Masalan: Ingliz tilida business speaking'ni yaxshilashim kerak, qanday yo'l tutaman? Yoki: listening uchun eng yaxshi podcast dasturlari qaysilar?"></textarea>
-          </div>
-          <button class="btn btn-primary" onclick="getAIAdvice()">✦ AI tavsiya olish</button>
-          <div id="ai-advice-response"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Tez savollar</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <button class="btn btn-ghost btn-sm" onclick="quickAsk('Mening visual learner ekanligimga mos video manbalar tavsiya ber')">📹 Visual manbalar</button>
-            <button class="btn btn-ghost btn-sm" onclick="quickAsk('SDL competency oshirish uchun haftalik reja tuz')">📅 Haftalik reja</button>
-            <button class="btn btn-ghost btn-sm" onclick="quickAsk('Grammar va Speaking nodalarini bog\'lash uchun connectivist yondashuv')">🔗 Nodes bog'lash</button>
-            <button class="btn btn-ghost btn-sm" onclick="quickAsk('B2 darajasida ingliz tilini mustaqil o\'rganish strategiyasi')">🎯 Strategiya</button>
-            <button class="btn btn-ghost btn-sm" onclick="quickAsk('Ingliz tilida speaking qo\'rquvini yengish yo\'llari')">💬 Speaking tips</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TEACHER DASHBOARD -->
-    <div id="view-teacher" class="view">
-      <div class="topbar">
-        <span class="topbar-title">O'qituvchi paneli</span>
-        <span class="badge badge-amber">5 ta o'quvchi</span>
-      </div>
-      <div class="content">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">O'rtacha SDL</div>
-            <div class="stat-val" style="color:var(--green)">74%</div>
-            <div class="stat-trend up">↑ Guruh o'sishi</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Aktiv o'quvchilar</div>
-            <div class="stat-val" style="color:var(--teal)">4/5</div>
-            <div class="stat-trend">Bu hafta</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Jami nodes</div>
-            <div class="stat-val" style="color:var(--accent)">118</div>
-            <div class="stat-trend up">↑ Guruh bilimi</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Zaif bo'linma</div>
-            <div class="stat-val" style="color:var(--coral)">Writing</div>
-            <div class="stat-trend down">↓ Guruh muammosi</div>
-          </div>
-        </div>
-
-        <div class="card mb-20">
-          <div class="card-title">O'quvchilar SDL holati</div>
-          <div id="students-list"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">✦ AI — Guruh uchun tavsiya</div>
-          <textarea id="teacher-question" placeholder="Guruh haqida savol yozing..." style="margin-bottom:12px"></textarea>
-          <button class="btn btn-primary" onclick="getTeacherAdvice()">✦ Tavsiya olish</button>
-          <div id="teacher-ai-response"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCREEN TIME MONITOR -->
-    <div id="view-screentime" class="view">
-      <div class="topbar">
-        <span class="topbar-title">Ekran vaqti nazorati</span>
-        <span class="badge badge-amber">⚠ 3 ta ogohlantirish</span>
-        <span class="badge badge-teal">Bugun</span>
-      </div>
-      <div class="content">
-
-        <!-- ALERTS -->
-        <div id="st-alerts"></div>
-
-        <!-- SUMMARY STATS -->
-        <div class="stats-grid" style="margin-bottom:20px">
-          <div class="stat-card">
-            <div class="stat-label">O'rtacha ekran vaqti</div>
-            <div class="stat-val" style="color:var(--coral)">5.8h</div>
-            <div class="stat-sub">Bugun (guruh)</div>
-            <div class="stat-trend down">↑ Norma: 2h</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">O'rganish vs Chalg'itish</div>
-            <div class="stat-val" style="color:var(--amber)">28%</div>
-            <div class="stat-sub">Foydali vaqt ulushi</div>
-            <div class="stat-trend down">↓ Maqsad: 60%</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Eng ko'p ishlatilgan</div>
-            <div class="stat-val" style="color:var(--coral); font-size:18px">TikTok</div>
-            <div class="stat-sub">Guruhda</div>
-            <div class="stat-trend down">↓ 2.1h/kun o'rtacha</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Xavfli o'quvchilar</div>
-            <div class="stat-val" style="color:var(--coral)">3/5</div>
-            <div class="stat-sub">Limitdan oshgan</div>
-            <div class="stat-trend down">↓ Diqqat kerak</div>
-          </div>
-        </div>
-
-        <!-- STUDENT TABS + DETAIL -->
-        <div class="card mb-20">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-            <div class="card-title" style="margin:0">O'quvchi tanlang</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap" id="st-tabs"></div>
-          </div>
-
-          <!-- DONUT + TOP APPS -->
-          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px">
-            <div>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center">Vaqt taqsimoti</div>
-              <div class="donut-wrap">
-                <canvas id="donut-canvas" width="120" height="120"></canvas>
-                <div class="donut-label">
-                  <span id="donut-total">—</span>
-                  <span class="donut-sub">soat/kun</span>
-                </div>
-              </div>
-            </div>
-            <div style="flex:1;min-width:200px">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Platforma tafsiloti</div>
-              <div id="platform-detail"></div>
-            </div>
-            <div style="min-width:200px">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Vaqt chegaralari (soat)</div>
-              <div id="limit-controls"></div>
-            </div>
-          </div>
-
-          <!-- HEATMAP -->
-          <div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">24 soatlik faollik xaritasi (qizil = chalg'ituvchi, yashil = foydali)</div>
-            <div class="time-heatmap" id="st-heatmap"></div>
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:4px">
-              <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- WEEKLY TREND -->
-        <div class="two-col" style="margin-bottom:20px">
-          <div class="card">
-            <div class="card-title">Haftalik ekran vaqti trendi</div>
-            <canvas id="st-week-chart" height="140"></canvas>
-          </div>
-          <div class="card">
-            <div class="card-title">Foydali vs Befoyda vaqt</div>
-            <canvas id="st-ratio-chart" height="140"></canvas>
-          </div>
-        </div>
-
-        <!-- AI RECOMMENDATION -->
-        <div class="card">
-          <div class="card-title">✦ AI — Ekran vaqti bo'yicha tavsiya</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            <button class="btn btn-ghost btn-sm" onclick="stAIAdvice('Ekran vaqtini ko\'p sarflayotgan o\'quvchilar uchun chalg\'itishni kamaytirish strategiyasi ber')">📉 Kamaytirish strategiyasi</button>
-            <button class="btn btn-ghost btn-sm" onclick="stAIAdvice('TikTok va Instagram vaqtini ingliz tili o\'rganishga yo\'naltirish yo\'llari')">🔄 Qayta yo\'naltirish</button>
-            <button class="btn btn-ghost btn-sm" onclick="stAIAdvice('Ota-onalar bilan hamkorlik: o\'quvchi ekran vaqtini nazorat qilish')">👨‍👩‍👧 Ota-ona bilan</button>
-          </div>
-          <textarea id="st-question" placeholder="O'quvchi ekran vaqti haqida savol yozing..." style="margin-bottom:12px"></textarea>
-          <button class="btn btn-primary" onclick="stAIAdvice()">✦ Tavsiya olish</button>
-          <div id="st-ai-response"></div>
-        </div>
-      </div>
-    </div>
-
-  </main>
-</div>
-
+<div id="root"></div>
 <script>
-// ───── DATA ─────
-const sources = [
-  { id:1, title:"BBC Learning English — 6 Minute English", type:"youtube", url:"https://youtube.com", node:"Listening", tags:["intermediate","authentic","british"], level:"B1-B2", score:92 },
-  { id:2, title:"English Grammar in Use — Raymond Murphy", type:"book", url:"", node:"Grammar", tags:["reference","rules","exercises"], level:"A2-B2", score:88 },
-  { id:3, title:"TED Talks — Ideas Worth Spreading", type:"youtube", url:"https://ted.com", node:"Speaking", tags:["advanced","inspiration","visual"], level:"B2-C1", score:85 },
-  { id:4, title:"All Ears English Podcast", type:"podcast", url:"", node:"Listening", tags:["american","conversational","idioms"], level:"B1-C1", score:90 },
-  { id:5, title:"Cambridge English Vocabulary in Use", type:"book", url:"", node:"Vocabulary", tags:["academic","collocations","reference"], level:"B2-C1", score:87 },
-  { id:6, title:"Write & Improve by Cambridge", type:"course", url:"https://writeandimprove.com", node:"Writing", tags:["AI feedback","IELTS","structured"], level:"A2-C1", score:83 },
-];
-
-const nodes = [
-  { id:"Grammar", group:1, size:30, connections:8, desc:"Tense, Modal verbs, Conditional" },
-  { id:"Vocabulary", group:2, size:26, connections:7, desc:"Collocations, Idioms, Word forms" },
-  { id:"Speaking", group:3, size:28, connections:6, desc:"Fluency, Pronunciation, Discourse" },
-  { id:"Listening", group:4, size:24, connections:5, desc:"Comprehension, Note-taking" },
-  { id:"Writing", group:5, size:20, connections:4, desc:"Academic, Business, Creative" },
-  { id:"Reading", group:2, size:22, connections:5, desc:"Skimming, Scanning, Critical" },
-  { id:"Pragmatics", group:3, size:16, connections:3, desc:"Register, Context, Culture" },
-  { id:"Phonology", group:3, size:14, connections:3, desc:"Sounds, Stress, Intonation" },
-];
-
-const links = [
-  { source:"Grammar", target:"Speaking", strength:0.9 },
-  { source:"Grammar", target:"Writing", strength:0.85 },
-  { source:"Vocabulary", target:"Speaking", strength:0.8 },
-  { source:"Vocabulary", target:"Reading", strength:0.75 },
-  { source:"Listening", target:"Speaking", strength:0.7 },
-  { source:"Writing", target:"Reading", strength:0.65 },
-  { source:"Grammar", target:"Reading", strength:0.6 },
-  { source:"Phonology", target:"Speaking", strength:0.55 },
-  { source:"Pragmatics", target:"Speaking", strength:0.5 },
-  { source:"Phonology", target:"Listening", strength:0.45 },
-  { source:"Vocabulary", target:"Writing", strength:0.6 },
-  { source:"Pragmatics", target:"Writing", strength:0.3 },
-];
-
-const students = [
-  { name:"Aziza Karimova", level:"B2", sdl:88, nodes:28, weak:"Phonology", trend:"up" },
-  { name:"Jasur Toshmatov", level:"B1", sdl:71, nodes:19, weak:"Writing", trend:"up" },
-  { name:"Nilufar Yusupova", level:"A2", sdl:65, nodes:14, weak:"Grammar", trend:"down" },
-  { name:"Sardor Abdullayev", level:"B2", sdl:79, nodes:22, weak:"Pragmatics", trend:"up" },
-  { name:"Dilnoza Rашидova", level:"B1", sdl:68, nodes:17, weak:"Speaking", trend:"up" },
-];
-
-const nodeColors = { 1:"#7c6ef5", 2:"#3ecf8e", 3:"#38bdf8", 4:"#f5a623", 5:"#ff6b6b" };
-
-// ───── AUTH (Kirish / Rol / Rozilik) ─────
-let currentRole = null;
-
-// Har bir rol qaysi bo'limlarni ko'radi (backend bilan kengaytiriladi)
-const roleViews = {
-  talaba:    ['dashboard','sources','network','sdl','ai'],
-  oqituvchi: ['dashboard','network','teacher','screentime','ai'],
-  otaona:    ['dashboard','screentime'],
+// ═══════════════════ CONSTANTS ═══════════════════
+const THEMES = {
+  indigo: {
+    primary:'#5B5EA6', sidebarBg:'#1C1C2E', sidebarDivColor:'rgba(255,255,255,0.07)',
+    sidebarTextHigh:'#FFFFFF', sidebarTextLow:'rgba(255,255,255,0.45)',
+    navActiveText:'#FFFFFF', navActiveBg:'rgba(91,94,166,0.32)',
+    navInactiveText:'rgba(255,255,255,0.6)', navHoverBg:'rgba(255,255,255,0.06)',
+    loginBg:'linear-gradient(135deg,#EEEEFF 0%,#E4E4FF 50%,#F4F4FF 100%)',
+    contentBg:'#F6F7FB', cardBg:'#FFFFFF', textColor:'#1A1A2E',
+    mutedColor:'#6B7280', borderColor:'#E5E7EB',
+    successColor:'#10B981', warningColor:'#F59E0B', dangerColor:'#EF4444',
+  }
 };
 
-function selectRole(role) {
-  currentRole = role;
-  document.querySelectorAll('.role-card').forEach(c =>
-    c.classList.toggle('selected', c.dataset.role === role));
-}
-
-function doLogin() {
-  if(!currentRole) return alert('Iltimos, rolingizni tanlang');
-  const email = document.getElementById('auth-email').value.trim();
-  if(!email) return alert('Email yoki login kiriting');
-  // TODO(backend): bu yerda haqiqiy autentifikatsiya bo'ladi (email + parol tekshiruvi)
-
-  if(currentRole === 'talaba') {
-    // Talaba uchun avval rozilik ekrani
-    document.getElementById('auth-step-login').style.display = 'none';
-    document.getElementById('auth-step-consent').style.display = 'block';
-  } else {
-    enterApp();
-  }
-}
-
-function toggleConsentBtn() {
-  const checked = document.getElementById('consent-checkbox').checked;
-  const btn = document.getElementById('consent-btn');
-  btn.style.opacity = checked ? '1' : '0.5';
-  btn.style.pointerEvents = checked ? 'auto' : 'none';
-}
-
-function doConsent() {
-  // TODO(backend): rozilik vaqti va foydalanuvchi ID'si serverga yoziladi
-  enterApp();
-}
-
-function backToLogin() {
-  document.getElementById('auth-step-consent').style.display = 'none';
-  document.getElementById('auth-step-login').style.display = 'block';
-}
-
-function enterApp() {
-  // Auth ekranini yashirib, ilovani ko'rsatamiz
-  document.getElementById('auth').style.display = 'none';
-  document.querySelector('.app').style.display = 'flex';
-
-  // Rolga qarab sidebar menyusini sozlaymiz
-  applyRoleNav();
-
-  // Foydalanuvchi chip'ini yangilaymiz
-  const roleLabel = { talaba:"O'quvchi", oqituvchi:"O'qituvchi", otaona:"Ota-ona" };
-  const nameEl = document.querySelector('.user-name');
-  if(nameEl) nameEl.textContent = roleLabel[currentRole] || 'Foydalanuvchi';
-
-  // Birinchi ruxsat etilgan bo'limni ochamiz
-  const allowed = roleViews[currentRole] || ['dashboard'];
-  showView(allowed[0]);
-}
-
-function applyRoleNav() {
-  const allowed = roleViews[currentRole] || [];
-  const navMap = {
-    dashboard:'dashboard', sources:'manba', network:'bilim', sdl:'sdl',
-    ai:'tavsiya', teacher:"o'qituvchi", screentime:'ekran',
-  };
-  document.querySelectorAll('.nav-item').forEach(n => {
-    const txt = n.textContent.trim().toLowerCase();
-    const view = Object.keys(navMap).find(v => txt.includes(navMap[v]));
-    n.style.display = (view && allowed.includes(view)) ? 'flex' : 'none';
-  });
-}
-
-// ───── NAVIGATION ─────
-function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('view-' + name).classList.add('active');
-  const labels = {dashboard:'dashboard',sources:'manba',network:'bilim',sdl:'sdl',ai:'tavsiya',teacher:"o'qituvchi",screentime:'ekran'};
-  document.querySelectorAll('.nav-item').forEach(n => {
-    if(n.textContent.trim().toLowerCase().includes(labels[name]||name)) n.classList.add('active');
-  });
-  if(name === 'network') setTimeout(drawFullGraph, 100);
-  if(name === 'dashboard') setTimeout(() => { drawMiniGraph(); drawSDLChart(); }, 100);
-  if(name === 'screentime') setTimeout(()=>{ renderSTCharts(screenTimeData[currentSTStudent]); }, 100);
-}
-
-// ───── RENDER SOURCES ─────
-function renderSources() {
-  const typeIcon = {youtube:'📹',podcast:'🎙',article:'📄',book:'📚',course:'🎓'};
-  document.getElementById('source-list').innerHTML = sources.map(s => `
-    <div class="source-card">
-      <div class="source-type">${typeIcon[s.type]||'📌'} ${s.type.toUpperCase()} &nbsp;·&nbsp; ${s.level}</div>
-      <div class="source-title">${s.title}</div>
-      <div class="source-meta">Node: <strong>${s.node}</strong> &nbsp;·&nbsp; AI Score: <strong style="color:var(--green)">${s.score}</strong></div>
-      <div class="source-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-    </div>
-  `).join('');
-}
-
-// ───── ADD SOURCE ─────
-function showAddSource() { document.getElementById('add-source-form').style.display='block'; }
-function hideAddSource() { document.getElementById('add-source-form').style.display='none'; }
-
-async function analyzeSource() {
-  const title = document.getElementById('src-title').value.trim();
-  const type = document.getElementById('src-type').value;
-  const url = document.getElementById('src-url').value.trim();
-  const node = document.getElementById('src-node').value.trim();
-  if(!title) return alert('Sarlavha kiriting');
-
-  showLoading('AI manba tahlil qilmoqda...');
-  const prompt = `Sen connectivism nazariyasi asosida ingliz tili o'rganuvchilar uchun PLN platformasining AI assistantissan.
-
-Quyidagi manba haqida qisqacha tahlil ber (o'zbek tilida, 3-4 gap):
-- Sarlavha: ${title}
-- Tur: ${type}
-- Node: ${node}
-
-Tahlilda quyidagilarni qamra ol:
-1. Bu manba qaysi o'rganish uslubiga (visual/auditory/reading/kinesthetic) to'g'ri keladi
-2. SDL (self-directed learning) rivojlantirishga qanday hissa qo'shadi
-3. Connectivism nuqtai nazaridan boshqa qaysi nodeslar bilan bog'lanishi mumkin
-4. Qisqa AI sifat bahosi (1-100)
-
-Javobni oddiy paragraf shaklida ber.`;
-
-  try {
-    const res = await callClaude(prompt);
-    document.getElementById('source-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n/g,'</p><p>')}</p></div>`;
-    sources.push({ id: sources.length+1, title, type, url, node: node||'General', tags:[], level:'B1-B2', score: Math.floor(Math.random()*15)+80 });
-    renderSources();
-  } catch(e) {
-    document.getElementById('source-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik: ${e.message}</p></div>`;
-  }
-  hideLoading();
-}
-
-// ───── SDL LOG ─────
-async function logSDL() {
-  const topic = document.getElementById('sdl-topic').value.trim();
-  const source = document.getElementById('sdl-source').value;
-  const rating = document.getElementById('sdl-rating').value;
-  if(!topic) return alert('Mavzu kiriting');
-
-  showLoading('SDL tahlil qilinmoqda...');
-  const prompt = `Sen connectivism va SDL (self-directed learning) ekspertissan. O'zbek tilida qisqa tahlil ber (2-3 gap):
-
-O'quvchi bugun o'rgandi:
-- Mavzu: ${topic}
-- Manba: ${source}
-- O'z-o'zini baholash: ${rating}/10
-
-Quyidagilarni qamra ol:
-1. Bu o'rganish SDL kompetensiyasining qaysi dimensiyasini rivojlantiradi (maqsad qo'yish/monitoring/baholash)
-2. Connectivism nuqtai nazaridan bu bilimni qaysi node bilan bog'lash mumkin
-3. Ertangi kun uchun kichik tavsiya`;
-
-  try {
-    const res = await callClaude(prompt);
-    document.getElementById('sdl-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n/g,'</p><p>')}</p></div>`;
-  } catch(e) {
-    document.getElementById('sdl-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik yuz berdi</p></div>`;
-  }
-  hideLoading();
-}
-
-// ───── AI ADVICE ─────
-async function getAIAdvice() {
-  const level = document.getElementById('ai-level').value;
-  const question = document.getElementById('ai-question').value.trim();
-  if(!question) return alert('Savol yozing');
-
-  showLoading('AI shaxsiy tavsiya tayyorlamoqda...');
-  const prompt = `Sen connectivism nazariyasi va SDL (self-directed learning) asosida ingliz tilini o'rgatuvchi AI tavsiyachisan.
-
-O'quvchi darajasi: ${level}
-Savoli: ${question}
-
-O'zbek tilida, 4-5 paragrafda javob ber. Javobda:
-1. Connectivism nuqtai nazaridan yondoshuv (nodes, connections, networks)
-2. SDL kompetensiyasini rivojlantiruvchi amaliy qadamlar
-3. O'rganish uslubiga mos manbalar (visual/auditory/kinesthetic)
-4. Haftalik mini-reja (konkret, bajarilishi mumkin bo'lgan)
-
-Ilmiy asosga ega, ammo qulay tilda yoz.`;
-
-  try {
-    const res = await callClaude(prompt);
-    document.getElementById('ai-advice-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')}</p></div>`;
-  } catch(e) {
-    document.getElementById('ai-advice-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik: ${e.message}</p></div>`;
-  }
-  hideLoading();
-}
-
-async function quickAsk(q) {
-  document.getElementById('ai-question').value = q;
-  showView('ai');
-  await getAIAdvice();
-}
-
-// ───── TEACHER ADVICE ─────
-async function getTeacherAdvice() {
-  const q = document.getElementById('teacher-question').value.trim();
-  if(!q) return alert('Savol yozing');
-
-  showLoading("O'qituvchi uchun tahlil...");
-  const prompt = `Sen ingliz tili o'qituvchisiga yordam beruvchi AI assistantsan. Guruh ma'lumotlari:
-- 5 ta o'quvchi, o'rtacha SDL: 74%
-- Eng zaif soha: Writing
-- O'quvchilar: Aziza(B2,SDL88%), Jasur(B1,SDL71%), Nilufar(A2,SDL65%), Sardor(B2,SDL79%), Dilnoza(B1,SDL68%)
-
-O'qituvchining savoli: ${q}
-
-O'zbek tilida, connectivism va SDL nazariyasi asosida amaliy tavsiya ber. 3-4 paragraf.`;
-
-  try {
-    const res = await callClaude(prompt);
-    document.getElementById('teacher-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')}</p></div>`;
-  } catch(e) {
-    document.getElementById('teacher-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik yuz berdi</p></div>`;
-  }
-  hideLoading();
-}
-
-// ───── CLAUDE API ─────
-async function callClaude(prompt) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      model:"claude-sonnet-4-20250514",
-      max_tokens:1000,
-      messages:[{ role:"user", content: prompt }]
-    })
-  });
-  if(!res.ok) throw new Error(`API xatosi: ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text || "Javob olinmadi";
-}
-
-// ───── LOADING ─────
-function showLoading(txt) {
-  document.getElementById('loading-text').textContent = txt || 'AI tahlil qilmoqda...';
-  document.getElementById('loading').style.display='flex';
-}
-function hideLoading() { document.getElementById('loading').style.display='none'; }
-
-// ───── CHARTS ─────
-function drawSDLChart() {
-  const canvas = document.getElementById('sdl-chart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width = canvas.offsetWidth;
-  const h = canvas.height = 160;
-  const data = [45,52,58,63,67,71,74,78,80,82,85,82];
-  const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const pad = { t:20,r:20,b:30,l:40 };
-  const gw = w - pad.l - pad.r, gh = h - pad.t - pad.b;
-  ctx.clearRect(0,0,w,h);
-  const max=90,min=30;
-  const pts = data.map((v,i) => ({ x: pad.l + i*(gw/(data.length-1)), y: pad.t + gh - (v-min)/(max-min)*gh }));
-  // grid
-  for(let i=0;i<4;i++) {
-    const y = pad.t + i*(gh/3);
-    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+gw,y); ctx.stroke();
-  }
-  // area
-  const grad = ctx.createLinearGradient(0,pad.t,0,pad.t+gh);
-  grad.addColorStop(0,'rgba(124,110,245,0.3)'); grad.addColorStop(1,'rgba(124,110,245,0)');
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pad.t+gh);
-  pts.forEach(p => ctx.lineTo(p.x,p.y));
-  ctx.lineTo(pts[pts.length-1].x, pad.t+gh);
-  ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
-  // line
-  ctx.beginPath(); pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
-  ctx.strokeStyle='#7c6ef5'; ctx.lineWidth=2; ctx.stroke();
-  // dots
-  pts.forEach((p,i) => {
-    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2);
-    ctx.fillStyle='#7c6ef5'; ctx.fill();
-  });
-  // labels
-  ctx.fillStyle='#8a8a9e'; ctx.font='10px DM Sans'; ctx.textAlign='center';
-  labels.forEach((l,i) => ctx.fillText(l, pts[i].x, h-8));
-}
-
-function drawMiniGraph() {
-  const svg = document.getElementById('mini-graph');
-  if(!svg) return;
-  const w = svg.clientWidth||600, h=200;
-  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
-  svg.innerHTML='';
-  const positions = {
-    Grammar:{x:w*0.5,y:80}, Vocabulary:{x:w*0.25,y:60}, Speaking:{x:w*0.7,y:50},
-    Listening:{x:w*0.3,y:140}, Writing:{x:w*0.6,y:150}, Reading:{x:w*0.15,y:120},
-    Pragmatics:{x:w*0.8,y:130}, Phonology:{x:w*0.85,y:60}
-  };
-  links.forEach(l => {
-    const s=positions[l.source],t=positions[l.target];
-    if(!s||!t) return;
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',s.x); line.setAttribute('y1',s.y);
-    line.setAttribute('x2',t.x); line.setAttribute('y2',t.y);
-    line.setAttribute('stroke',`rgba(124,110,245,${l.strength*0.5})`);
-    line.setAttribute('stroke-width', l.strength*3);
-    svg.appendChild(line);
-  });
-  nodes.forEach(n => {
-    const p=positions[n.id]; if(!p) return;
-    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
-    c.setAttribute('r', n.size*0.7);
-    c.setAttribute('fill', nodeColors[n.group]||'#7c6ef5');
-    c.setAttribute('fill-opacity','0.85');
-    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-    txt.setAttribute('x',p.x); txt.setAttribute('y',p.y+18);
-    txt.setAttribute('text-anchor','middle'); txt.setAttribute('fill','#8a8a9e');
-    txt.setAttribute('font-size','10'); txt.textContent=n.id;
-    g.appendChild(c); g.appendChild(txt); svg.appendChild(g);
-  });
-}
-
-function drawFullGraph() {
-  const container = document.getElementById('full-graph');
-  const svg = document.getElementById('network-svg');
-  if(!svg||!container) return;
-  const w = container.clientWidth||700, h=420;
-  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
-  svg.innerHTML='';
-
-  const sim_nodes = nodes.map(n => ({...n}));
-  const sim_links = links.map(l => ({...l}));
-
-  const positions = {
-    Grammar:{x:w*0.5,y:h*0.4}, Vocabulary:{x:w*0.28,y:h*0.3}, Speaking:{x:w*0.68,y:h*0.25},
-    Listening:{x:w*0.32,y:h*0.65}, Writing:{x:w*0.62,y:h*0.7}, Reading:{x:w*0.15,y:h*0.5},
-    Pragmatics:{x:w*0.8,y:h*0.6}, Phonology:{x:w*0.78,y:h*0.22}
-  };
-
-  const tooltip = document.getElementById('node-tooltip');
-
-  sim_links.forEach(l => {
-    const s=positions[l.source],t=positions[l.target];
-    if(!s||!t) return;
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',s.x); line.setAttribute('y1',s.y);
-    line.setAttribute('x2',t.x); line.setAttribute('y2',t.y);
-    line.setAttribute('stroke',`rgba(124,110,245,${l.strength*0.6})`);
-    line.setAttribute('stroke-width', l.strength*4);
-    svg.appendChild(line);
-  });
-
-  nodes.forEach(n => {
-    const p=positions[n.id]; if(!p) return;
-    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.style.cursor='pointer';
-    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r',n.size);
-    c.setAttribute('fill', nodeColors[n.group]||'#7c6ef5');
-    c.setAttribute('fill-opacity','0.9');
-    c.setAttribute('stroke','rgba(255,255,255,0.15)'); c.setAttribute('stroke-width','1.5');
-    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-    txt.setAttribute('x',p.x); txt.setAttribute('y',p.y+n.size+14);
-    txt.setAttribute('text-anchor','middle'); txt.setAttribute('fill','#8a8a9e');
-    txt.setAttribute('font-size','12'); txt.textContent=n.id;
-    const cnt=document.createElementNS('http://www.w3.org/2000/svg','text');
-    cnt.setAttribute('x',p.x); cnt.setAttribute('y',p.y+4);
-    cnt.setAttribute('text-anchor','middle'); cnt.setAttribute('fill','white');
-    cnt.setAttribute('font-size','11'); cnt.setAttribute('font-weight','600');
-    cnt.textContent=n.connections;
-    g.addEventListener('mouseenter', e => {
-      c.setAttribute('fill-opacity','1');
-      c.setAttribute('r', n.size+3);
-      tooltip.style.display='block';
-      tooltip.style.left=(p.x+n.size+10)+'px';
-      tooltip.style.top=(p.y-20)+'px';
-      tooltip.innerHTML=`<strong>${n.id}</strong><br>${n.desc}<br><span style="color:var(--accent)">${n.connections} bog'lanish</span>`;
-    });
-    g.addEventListener('mouseleave', () => {
-      c.setAttribute('fill-opacity','0.9'); c.setAttribute('r',n.size);
-      tooltip.style.display='none';
-    });
-    g.appendChild(c); g.appendChild(txt); g.appendChild(cnt);
-    svg.appendChild(g);
-  });
-
-  // strong/weak connections
-  const strong = links.filter(l=>l.strength>0.7).sort((a,b)=>b.strength-a.strength);
-  const weak = links.filter(l=>l.strength<0.5).sort((a,b)=>a.strength-b.strength);
-
-  document.getElementById('strong-connections').innerHTML = strong.map(l=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px">${l.source} → ${l.target}</span>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-        <div class="mini-bar"><div class="mini-fill" style="width:${l.strength*100}%;background:var(--green)"></div></div>
-        <span style="font-size:12px;color:var(--green)">${Math.round(l.strength*100)}%</span>
-      </div>
-    </div>
-  `).join('');
-
-  document.getElementById('weak-connections').innerHTML = weak.map(l=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px">${l.source} → ${l.target}</span>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-        <div class="mini-bar"><div class="mini-fill" style="width:${l.strength*100}%;background:var(--coral)"></div></div>
-        <span style="font-size:12px;color:var(--coral)">${Math.round(l.strength*100)}%</span>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ───── SDL WEEK ─────
-function renderSDLWeek() {
-  const days=['Du','Se','Ch','Pa','Ju','Sh','Ya'];
-  const scores=[88,72,91,65,80,45,0];
-  const colors=['#3ecf8e','#7c6ef5','#3ecf8e','#f5a623','#38bdf8','#8a8a9e','#1c1d28'];
-  document.getElementById('sdl-week').innerHTML = days.map((d,i)=>`
-    <div class="day-cell" style="background:${scores[i]>0?colors[i]+'22':'var(--bg3)'}">
-      <div class="day-label">${d}</div>
-      <div class="day-score" style="color:${scores[i]>0?colors[i]:'var(--dim)'}">${scores[i]||'—'}</div>
-    </div>
-  `).join('');
-}
-
-function renderSDLDimensions() {
-  const dims=[
-    {name:'Maqsad qo\'yish',score:85,desc:'Haftalik maqsadlar belgilash',color:'var(--accent)'},
-    {name:'O\'z-o\'zini monitoring',score:78,desc:'Jarayonni kuzatish',color:'var(--teal)'},
-    {name:'Strategiya tanlash',score:72,desc:'O\'rganish usulini tanlash',color:'var(--green)'},
-    {name:'O\'z-o\'zini baholash',score:88,desc:'Natijalarni refleksiya qilish',color:'var(--amber)'},
-    {name:'Motivatsiya',score:80,desc:'Ichki va tashqi motivatsiya',color:'var(--purple)'},
-  ];
-  document.getElementById('sdl-dimensions').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">` +
-    dims.map(d=>`
-      <div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:13px;font-weight:500">${d.name}</span>
-          <span style="font-size:13px;color:${d.color};font-weight:600">${d.score}%</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${d.score}%;background:${d.color}"></div></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">${d.desc}</div>
-      </div>
-    `).join('') + `</div>`;
-}
-
-function renderStudents() {
-  document.getElementById('students-list').innerHTML = students.map(s=>`
-    <div class="student-row">
-      <div class="avatar" style="width:32px;height:32px;font-size:11px">${s.name.split(' ').map(w=>w[0]).join('')}</div>
-      <div>
-        <div class="student-name">${s.name}</div>
-        <div class="student-level">${s.level} · Zaif: ${s.weak}</div>
-      </div>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-        <span style="font-size:12px;color:var(--muted)">${s.nodes} nodes</span>
-        <div class="mini-bar" style="width:90px">
-          <div class="mini-fill" style="width:${s.sdl}%;background:${s.sdl>80?'var(--green)':s.sdl>70?'var(--amber)':'var(--coral)'}"></div>
-        </div>
-        <span style="font-size:13px;font-weight:600;min-width:36px;text-align:right;color:${s.sdl>80?'var(--green)':s.sdl>70?'var(--amber)':'var(--coral)'}">${s.sdl}%</span>
-        <span style="font-size:14px">${s.trend==='up'?'↑':'↓'}</span>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ───── SCREEN TIME DATA ─────
-const screenTimeData = {
-  'Aziza Karimova': {
-    total: 4.2,
-    platforms: [
-      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:95, bg:'rgba(62,207,142,0.12)' },
-      { name:'BBC Learning', icon:'📚', cat:'foydali', color:'#38bdf8', mins:60, bg:'rgba(56,189,248,0.12)' },
-      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:72, bg:'rgba(245,166,35,0.12)' },
-      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:45, bg:'rgba(255,107,107,0.12)' },
-      { name:'Telegram', icon:'💬', cat:'neytral', color:'#8a8a9e', mins:38, bg:'rgba(138,138,158,0.12)' },
-    ],
-    heatmap: [0,0,0,0,0,0,1,2,3,4,3,2,5,4,3,2,4,5,6,5,4,3,2,1],
-    heatType: [0,0,0,0,0,0,1,1,1,1,1,2,0,0,0,2,0,0,0,0,0,2,2,0],
-    weekData: [3.8,4.1,4.5,3.9,4.2,5.1,4.8],
-    riskLevel: 'medium',
-    limits: { YouTube:3, Instagram:1, TikTok:0.5, Telegram:1, 'BBC Learning':4 },
+const I18N = {
+  uz: {
+    subtitle:"Shaxsiy O'quv Tarmog'ingizga kirish", email:'Email', password:'Parol',
+    selectRole:'Rolni tanlang', student:'Talaba', teacher:"O'qituvchi", parent:'Ota-ona',
+    signIn:'Kirish', back:'Orqaga',
+    consentTitle:'Ekran Vaqtini Nazorat Qilish',
+    consentSub:'Davom etishdan oldin quyidagilarga rozilik bering',
+    consentCheck:"Yuqoridagilarga roziman va davom etmoqchiman", continue:'Davom etish', logout:'Chiqish',
+    varkTitle:"O'rganish Turi Testi", varkResult:"Sizning o'rganish uslubingiz",
+    varkBtns:{V:"Ko'rish",A:'Eshitish',R:"O'qish",K:'Amaliyot'},
+    varkTypes:{V:"Vizual O'rganuvchi",A:"Audial O'rganuvchi",R:"O'qib O'rganuvchi",K:"Amaliy O'rganuvchi"},
+    varkDescs:{
+      V:"Siz ma'lumotni rasmlar, diagrammalar va vizual ko'rinishlar orqali eng yaxshi o'zlashtirasiz. Mind-map va color-coding usullaridan foydalaning.",
+      A:"Siz tinglab o'rganasiz. Audio materiallar, podcast va guruh muhokamalaridan foydalanish sizga juda yordam beradi.",
+      R:"Siz o'qib o'rganasiz. Konspekt yozish va yozma qo'llanmalar sizning kuchli tomoningiz.",
+      K:"Siz amaliy tajriba orqali o'rganasiz. Real loyihalar va hands-on mashqlar sizga eng mos keladi."
+    },
+    weeklyStudy:"Haftalik O'qish", last7days:'Oxirgi 7 kun', topApps:"Eng Ko'p Foydalanilgan Dasturlar",
+    sdlScore:"SDL Ko'rsatkichi", thisWeek:'Bu hafta', viewDetails:"Batafsil ko'rish",
+    aiTip:'AI Tavsiyasi', askAI:"AI dan so'rash", weeklyGoal:'Haftalik Maqsadlar',
+    sdlChartTitle:'SDL Grafigi', last8weeks:'Oxirgi 8 hafta', weeklyBreakdown:'Haftalik Tahlil',
+    week:'Hafta', studyTime:"O'qish Vaqti", status:'Holat',
+    aiWelcome:"Assalomu alaykum! Men sizning shaxsiy o'quv yordamchingizman. O'qish, rejalashtirish yoki ma'lumot haqida savollaringizni berishingiz mumkin.",
+    aiPlaceholder:'Savolingizni yozing...',
+    knowledgeTitle:"Bilim Tarmog'i", knowledgeSub:"O'rganilgan mavzular va ularning bog'liqliklari",
+    masteryLevel:"O'zlashtirish darajasi", mastery:"O'zlashtirish", timeSpent:'Sarflangan vaqt',
+    connections:"Bog'liqliklar", subtopics:'Kichik mavzular', nextTopics:'Keyingi mavzular',
+    kgSelectNode:'Mavzuni tanlang', kgSelectNodeSub:"Grafikdan biror mavzuni bosing va batafsil ma'lumot ko'ring",
+    teacherTitle:"O'qituvchi Paneli", parentTitle:'Ota-ona Paneli', screenTimeTitle:'Ekran Vaqti Nazorati',
+    studentList:"O'quvchilar Ro'yxati", students:"o'quvchi", name:'Ism', todayStudy:"Bugungi o'qish", score:'Ball', risk:'Xavf',
+    appBreakdown:'Dasturlar Tahlili', timeDistribution:'Vaqt Taqsimoti',
+    productive:'Foydali', neutral:'Neytral', distraction:"Chalg'ituvchi",
   },
-  'Jasur Toshmatov': {
-    total: 7.1,
-    platforms: [
-      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:185, bg:'rgba(255,107,107,0.12)' },
-      { name:'PUBG Mobile', icon:'🎮', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:120, bg:'rgba(255,107,107,0.12)' },
-      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:55, bg:'rgba(62,207,142,0.12)' },
-      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:48, bg:'rgba(245,166,35,0.12)' },
-      { name:'Duolingo', icon:'🦜', cat:'foydali', color:'#3ecf8e', mins:18, bg:'rgba(62,207,142,0.12)' },
-    ],
-    heatmap: [0,0,0,0,1,0,1,1,2,2,3,3,4,5,6,7,8,7,6,5,7,8,6,4],
-    heatType: [0,0,0,0,2,0,1,1,1,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0],
-    weekData: [5.2,6.8,7.1,6.5,7.8,8.2,7.1],
-    riskLevel: 'high',
-    limits: { TikTok:0.5, 'PUBG Mobile':1, YouTube:3, Instagram:1, Duolingo:4 },
+  ru: {
+    subtitle:'Войдите в вашу Персональную Учебную Сеть', email:'Email', password:'Пароль',
+    selectRole:'Выберите роль', student:'Студент', teacher:'Учитель', parent:'Родитель',
+    signIn:'Войти', back:'Назад',
+    consentTitle:'Мониторинг экранного времени',
+    consentSub:'Пожалуйста, согласитесь перед продолжением',
+    consentCheck:'Я согласен с вышеизложенным и хочу продолжить', continue:'Продолжить', logout:'Выйти',
+    varkTitle:'Тест стиля обучения', varkResult:'Ваш стиль обучения',
+    varkBtns:{V:'Визуально',A:'На слух',R:'Чтением',K:'Практикой'},
+    varkTypes:{V:'Визуал',A:'Аудиал',R:'Читатель',K:'Практик'},
+    varkDescs:{
+      V:'Вы лучше усваиваете информацию через изображения и диаграммы. Используйте ментальные карты.',
+      A:'Вы учитесь через прослушивание. Аудиоматериалы и подкасты очень помогут вам.',
+      R:'Вы учитесь через чтение. Ведение конспектов и чтение статей — ваши сильные стороны.',
+      K:'Вы учитесь через практику. Реальные проекты и практические упражнения вам больше всего подходят.'
+    },
+    weeklyStudy:'Еженедельное обучение', last7days:'Последние 7 дней', topApps:'Наиболее используемые приложения',
+    sdlScore:'Показатель SDL', thisWeek:'На этой неделе', viewDetails:'Подробнее',
+    aiTip:'Совет ИИ', askAI:'Спросить ИИ', weeklyGoal:'Еженедельные цели',
+    sdlChartTitle:'График SDL', last8weeks:'Последние 8 недель', weeklyBreakdown:'Еженедельный анализ',
+    week:'Неделя', studyTime:'Время обучения', status:'Статус',
+    aiWelcome:'Привет! Я ваш персональный учебный помощник. Задавайте вопросы об учёбе, планировании или ресурсах.',
+    aiPlaceholder:'Напишите ваш вопрос...',
+    knowledgeTitle:'Граф знаний', knowledgeSub:'Изученные темы и их взаимосвязи',
+    masteryLevel:'Уровень освоения', mastery:'Освоение', timeSpent:'Затраченное время',
+    connections:'Связи', subtopics:'Подтемы', nextTopics:'Следующие темы',
+    kgSelectNode:'Выберите тему', kgSelectNodeSub:'Нажмите на тему в графе, чтобы увидеть подробности',
+    teacherTitle:'Панель учителя', parentTitle:'Панель родителя', screenTimeTitle:'Мониторинг экранного времени',
+    studentList:'Список студентов', students:'студентов', name:'Имя', todayStudy:'Сегодняшнее обучение', score:'Балл', risk:'Риск',
+    appBreakdown:'Анализ приложений', timeDistribution:'Распределение времени',
+    productive:'Продуктивно', neutral:'Нейтрально', distraction:'Отвлечение',
   },
-  'Nilufar Yusupova': {
-    total: 6.4,
-    platforms: [
-      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:155, bg:'rgba(245,166,35,0.12)' },
-      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:110, bg:'rgba(255,107,107,0.12)' },
-      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:65, bg:'rgba(62,207,142,0.12)' },
-      { name:'Spotify', icon:'🎵', cat:'foydali', color:'#38bdf8', mins:40, bg:'rgba(56,189,248,0.12)' },
-      { name:'Minecraft', icon:'🎮', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:30, bg:'rgba(255,107,107,0.12)' },
-    ],
-    heatmap: [0,0,0,0,0,0,1,1,2,3,3,4,5,4,3,4,5,6,5,6,5,4,3,1],
-    heatType: [0,0,0,0,0,0,1,1,1,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0],
-    weekData: [4.5,5.8,6.2,6.0,6.4,7.1,6.8],
-    riskLevel: 'high',
-    limits: { Instagram:1, TikTok:0.5, YouTube:3, Spotify:2, Minecraft:1 },
-  },
-  'Sardor Abdullayev': {
-    total: 3.5,
-    platforms: [
-      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:90, bg:'rgba(62,207,142,0.12)' },
-      { name:'Coursera', icon:'🎓', cat:'foydali', color:'#38bdf8', mins:60, bg:'rgba(56,189,248,0.12)' },
-      { name:'Telegram', icon:'💬', cat:'neytral', color:'#8a8a9e', mins:35, bg:'rgba(138,138,158,0.12)' },
-      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:20, bg:'rgba(245,166,35,0.12)' },
-      { name:'Anki', icon:'🗂', cat:'foydali', color:'#3ecf8e', mins:5, bg:'rgba(62,207,142,0.12)' },
-    ],
-    heatmap: [0,0,0,0,0,0,1,2,3,4,3,2,3,4,3,2,3,4,3,2,2,1,1,0],
-    heatType: [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,0,0],
-    weekData: [3.2,3.4,3.6,3.3,3.5,4.1,3.8],
-    riskLevel: 'low',
-    limits: { YouTube:4, Coursera:4, Telegram:1.5, Instagram:1, Anki:4 },
-  },
-  'Dilnoza Rashidova': {
-    total: 5.3,
-    platforms: [
-      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:130, bg:'rgba(255,107,107,0.12)' },
-      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:70, bg:'rgba(62,207,142,0.12)' },
-      { name:'VK', icon:'💬', cat:'chalg\'ituvchi', color:'#f5a623', mins:55, bg:'rgba(245,166,35,0.12)' },
-      { name:'BBC Learning', icon:'📚', cat:'foydali', color:'#38bdf8', mins:45, bg:'rgba(56,189,248,0.12)' },
-      { name:'Roblox', icon:'🎮', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:18, bg:'rgba(255,107,107,0.12)' },
-    ],
-    heatmap: [0,0,0,0,0,0,1,2,3,3,2,3,4,4,3,3,5,6,5,4,4,3,2,1],
-    heatType: [0,0,0,0,0,0,1,1,1,1,1,2,0,0,0,2,0,0,0,0,0,0,0,0],
-    weekData: [4.2,5.0,5.3,4.8,5.3,6.2,5.8],
-    riskLevel: 'medium',
-    limits: { TikTok:0.5, YouTube:3, VK:1, 'BBC Learning':4, Roblox:0.5 },
-  },
+  en: {
+    subtitle:'Sign in to your Personal Learning Network', email:'Email address', password:'Password',
+    selectRole:'Select your role', student:'Student', teacher:'Teacher', parent:'Parent',
+    signIn:'Sign in', back:'Back',
+    consentTitle:'Screen Time Monitoring',
+    consentSub:'Please agree to the following before continuing',
+    consentCheck:'I agree to the above and wish to continue', continue:'Continue', logout:'Sign out',
+    varkTitle:'Learning Style Test', varkResult:'Your learning style',
+    varkBtns:{V:'Visual',A:'Auditory',R:'Reading',K:'Kinesthetic'},
+    varkTypes:{V:'Visual Learner',A:'Auditory Learner',R:'Reading Learner',K:'Kinesthetic Learner'},
+    varkDescs:{
+      V:'You learn best through images, diagrams, and visual representations. Use mind maps and color-coding.',
+      A:'You learn by listening. Audio materials, podcasts, and group discussions are highly effective for you.',
+      R:'You learn by reading. Note-taking and written guides are your strengths.',
+      K:'You learn through hands-on experience. Real projects and practical exercises suit you best.'
+    },
+    weeklyStudy:'Weekly Study', last7days:'Last 7 days', topApps:'Most Used Applications',
+    sdlScore:'SDL Score', thisWeek:'This week', viewDetails:'View details',
+    aiTip:'AI Tip', askAI:'Ask AI', weeklyGoal:'Weekly Goals',
+    sdlChartTitle:'SDL Graph', last8weeks:'Last 8 weeks', weeklyBreakdown:'Weekly Breakdown',
+    week:'Week', studyTime:'Study Time', status:'Status',
+    aiWelcome:"Hello! I'm your personal learning assistant. Ask me anything about studying, planning, or resources.",
+    aiPlaceholder:'Type your question...',
+    knowledgeTitle:'Knowledge Graph', knowledgeSub:'Learned topics and their connections',
+    masteryLevel:'Mastery level', mastery:'Mastery', timeSpent:'Time spent',
+    connections:'Connections', subtopics:'Subtopics', nextTopics:'Next topics',
+    kgSelectNode:'Select a topic', kgSelectNodeSub:'Click any topic in the graph to see details',
+    teacherTitle:'Teacher Panel', parentTitle:'Parent Panel', screenTimeTitle:'Screen Time Monitor',
+    studentList:'Student List', students:'students', name:'Name', todayStudy:"Today's study", score:'Score', risk:'Risk',
+    appBreakdown:'App Breakdown', timeDistribution:'Time Distribution',
+    productive:'Productive', neutral:'Neutral', distraction:'Distraction',
+  }
 };
 
-let currentSTStudent = 'Aziza Karimova';
+const VARK_QS = [
+  {uz:"Yangi dasturlash tilini o'rganayotganda siz nimani afzal ko'rasiz?",ru:"Изучая новый язык программирования, вы предпочитаете?",en:"When learning a new programming language, you prefer?",
+   opts:{uz:["Video darsliklarni ko'rish","Tushuntirishlarni tinglash","Dokumentatsiyani o'qish","Kodni yozib sinab ko'rish"],ru:["Смотреть видеоуроки","Слушать объяснения","Читать документацию","Писать и тестировать код"],en:["Watch video tutorials","Listen to explanations","Read documentation","Write and test code"]},types:['V','A','R','K']},
+  {uz:"Muammo yechishda odatda nima qilasiz?",ru:"При решении проблемы вы обычно?",en:"When solving a problem, you usually?",
+   opts:{uz:["Diagramma yoki sxema chizaman","Boshqalar bilan muhokama qilaman","Maqolalar o'qiyman","Turli yechimlarni sinab ko'raman"],ru:["Рисую диаграмму или схему","Обсуждаю с другими","Читаю статьи","Пробую разные решения"],en:["Draw a diagram or schema","Discuss with others","Read articles","Try different solutions"]},types:['V','A','R','K']},
+  {uz:"Ma'lumotni eng yaxshi eslab qolasiz, agar...",ru:"Вы лучше запоминаете, если...",en:"You remember information best when...",
+   opts:{uz:["Rasm yoki grafik ko'rsam","Baland ovozda takrorlasam","Yozib olsam","Amalda qo'llasam"],ru:["Вижу изображения или графики","Проговариваю вслух","Записываю","Применяю на практике"],en:["I see images or graphics","I say it aloud","I write it down","I apply it practically"]},types:['V','A','R','K']},
+  {uz:"Yangi shaharda yo'l topishda siz...",ru:"Ориентируясь в новом городе, вы...",en:"Finding your way in a new city, you...",
+   opts:{uz:["Vizual xaritadan foydalanaman","Yo'l yo'riqlarini tinglayman","Yo'nalishni yozib olaman","Aylanib o'zim topaman"],ru:["Использую визуальную карту","Слушаю устные указания","Записываю маршрут","Хожу и нахожу сам"],en:["Use a visual map","Listen to directions","Write down the route","Explore and find myself"]},types:['V','A','R','K']},
+  {uz:"Imtihonga tayyorlanayotganda siz...",ru:"Готовясь к экзамену, вы...",en:"When preparing for an exam, you...",
+   opts:{uz:["Mind-map yoki diagramma yarataman","Audioleksiyalar tinglayman","Ko'p marta o'qiyman","Amaliy misollar yechaman"],ru:["Создаю майндмэп или диаграммы","Слушаю аудиолекции","Перечитываю материал","Решаю практические задачи"],en:["Create mind maps or diagrams","Listen to audio lectures","Re-read material","Solve practice problems"]},types:['V','A','R','K']},
+  {uz:"Ko'nikmani o'rganayotganda siz ko'proq...",ru:"Осваивая навык, вы чаще...",en:"When learning a skill, you mostly...",
+   opts:{uz:["Boshqalarni kuzataman","Kimdir tushuntirishini tinglayman","Qo'llanma o'qiyman","Darhol o'zim sinab ko'raman"],ru:["Наблюдаю за другими","Слушаю объяснения","Читаю руководство","Сразу пробую сам"],en:["Watch others doing it","Listen to explanations","Read a guide","Try it myself immediately"]},types:['V','A','R','K']},
+];
 
-function renderScreenTime() {
-  // tabs
-  document.getElementById('st-tabs').innerHTML = Object.keys(screenTimeData).map(name=>`
-    <div class="student-tab ${name===currentSTStudent?'active':''}" onclick="selectSTStudent('${name}')">${name.split(' ')[0]}</div>
-  `).join('');
-
-  const d = screenTimeData[currentSTStudent];
-  renderAlerts();
-  renderPlatformDetail(d);
-  renderLimitControls(d);
-  renderDonut(d);
-  renderHeatmap(d);
-  renderSTCharts(d);
+// AI javoblari — kalit so'z asosida (backend ulanganda Claude API bilan almashtiriladi)
+function getAIReply(msg, lang) {
+  const lower = msg.toLowerCase();
+  const R = {
+    uz:[
+      {k:['python','kod','dastur','program'],r:"Python o'rganish uchun: Codecademy, freeCodeCamp va repl.it dan foydalaning. Kuniga 1 soat amaliy mashq qiling! 🐍"},
+      {k:['sdl','mustaqil'],r:"SDL ko'rsatkichingiz bu hafta 87 ballga yetdi! Maqsad qo'yib, taraqqiyotingizni kuzatib boring. 🎯"},
+      {k:['vaqt','rej','kun','soat','plan'],r:"Pomodoro usuli: 25 daqiqa o'qish + 5 daqiqa dam. Samaradorlik 40% oshadi! ⏱️"},
+      {k:['salom','hi','hello','assalom'],r:"Assalomu alaykum! O'qish, rejalashtirish yoki ma'lumot haqida so'rang. 😊"},
+      {k:['math','matema','fizika','kimyo'],r:"Aniq fanlar uchun Khan Academy juda yaxshi! Vizual va bepul darsliklar bor. 📐"},
+      {k:['vark',"o'rgan",'uslub'],r:"VARK testini topshirib o'z o'rganish uslubingizni aniqlang! Chap menyu → VARK Testi 🧠"},
+      {k:['yaxshi','rahmat',"zo'r",'raxmat'],r:"Rahmat! Siz zo'r o'qiyapsiz. Davom eting! 🌟"},
+    ],
+    ru:[
+      {k:['python','код','программ'],r:"Для Python: Codecademy, freeCodeCamp, repl.it. Практикуйтесь минимум час в день! 🐍"},
+      {k:['sdl','само','независ'],r:"Ваш SDL-балл достиг 87 на этой неделе! Ставьте цели и отслеживайте прогресс. 🎯"},
+      {k:['время','план','час'],r:"Техника Помодоро: 25 мин работы + 5 мин отдыха. Продуктивность +40%! ⏱️"},
+      {k:['привет','hi','hello'],r:"Привет! Спрашивайте об учёбе, планировании или ресурсах. 😊"},
+      {k:['матем','физик','химия'],r:"Для точных наук — Khan Academy. Визуально и бесплатно. 📐"},
+      {k:['vark','стиль','обучен'],r:"Пройдите тест VARK, чтобы узнать свой стиль обучения! Левое меню → Тест VARK 🧠"},
+      {k:['спасибо','отлично','здорово'],r:"Пожалуйста! Вы отлично занимаетесь. Продолжайте! 🌟"},
+    ],
+    en:[
+      {k:['python','code','program'],r:"For Python: Codecademy, freeCodeCamp, repl.it. Practice at least 1 hour daily! 🐍"},
+      {k:['sdl','self','direct'],r:"Your SDL score hit 87 this week! Keep setting goals and tracking progress. 🎯"},
+      {k:['time','schedule','plan','hour'],r:"Pomodoro technique: 25 min focus + 5 min break. Boosts productivity by 40%! ⏱️"},
+      {k:['hi','hello','hey'],r:"Hello! Ask about studying, planning, or resources. 😊"},
+      {k:['math','physics','science','chemistry'],r:"For science subjects, Khan Academy is excellent. Visual and free! 📐"},
+      {k:['vark','learn','style'],r:"Take the VARK test to discover your learning style! Left menu → VARK Test 🧠"},
+      {k:['thanks','great','awesome','good'],r:"You're welcome! You're doing great. Keep it up! 🌟"},
+    ],
+  };
+  const list = R[lang] || R.en;
+  for (const o of list) { if (o.k.some(kw => lower.includes(kw))) return o.r; }
+  const D = {uz:"Qiziq savol! Qo'shimcha ma'lumot bering, ko'proq yordam bera olaman. 🤔",ru:"Интересный вопрос! Дайте больше деталей. 🤔",en:"Interesting! Give me more details and I'll help better. 🤔"};
+  return D[lang] || D.en;
 }
 
-function selectSTStudent(name) {
-  currentSTStudent = name;
-  renderScreenTime();
-}
+// ═══════════════════ STATE ═══════════════════
+const state = {
+  screen:'login', role:null, lang:'uz',
+  email:'talaba@pln.uz', password:'••••••••',
+  consentChecked:false,
+  varkStep:0, varkAnswers:[], varkDone:false,
+  chatInput:'', chatMessages:[], isAITyping:false,
+  selectedKgNode:null,
+};
+state.chatMessages = [{ type:'ai', text:I18N[state.lang].aiWelcome, time:'09:00' }];
 
-function renderAlerts() {
-  const alerts = [];
-  Object.entries(screenTimeData).forEach(([name, d]) => {
-    d.platforms.forEach(p => {
-      const limit = d.limits[p.name];
-      const actual = +(p.mins/60).toFixed(1);
-      if(limit && actual > limit) {
-        alerts.push({ name, platform: p.name, actual, limit, icon: p.icon });
-      }
-    });
-  });
-  const high = alerts.filter(a => a.actual > a.limit * 1.5);
-  const med = alerts.filter(a => a.actual <= a.limit * 1.5 && a.actual > a.limit);
-  let html = '';
-  if(high.length) html += high.slice(0,2).map(a=>`
-    <div class="alert-banner alert-red">
-      <span style="font-size:18px">🚨</span>
-      <div>
-        <div style="font-size:13px;font-weight:500;color:var(--coral)">${a.name} — ${a.platform} ${a.icon}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">
-          Kunlik limit: ${a.limit}h · Haqiqiy: <strong style="color:var(--coral)">${a.actual}h</strong> — limitdan ${Math.round((a.actual/a.limit-1)*100)}% oshib ketdi
-        </div>
-      </div>
-    </div>
-  `).join('');
-  if(med.length) html += med.slice(0,2).map(a=>`
-    <div class="alert-banner alert-amber">
-      <span style="font-size:18px">⚠️</span>
-      <div>
-        <div style="font-size:13px;font-weight:500;color:var(--amber)">${a.name} — ${a.platform} ${a.icon}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">
-          Kunlik limit: ${a.limit}h · Haqiqiy: <strong style="color:var(--amber)">${a.actual}h</strong>
-        </div>
-      </div>
-    </div>
-  `).join('');
-  document.getElementById('st-alerts').innerHTML = html;
-}
+const getLang = () => state.lang || 'uz';
+const getTheme = () => THEMES.indigo;
+const timeNow = () => new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
 
-function renderPlatformDetail(d) {
-  const total = d.platforms.reduce((s,p)=>s+p.mins,0);
-  document.getElementById('platform-detail').innerHTML = d.platforms.map(p=>{
-    const hrs = (p.mins/60).toFixed(1);
-    const pct = Math.round(p.mins/total*100);
-    const limit = d.limits[p.name];
-    const over = limit && (p.mins/60) > limit;
-    return `
-      <div class="platform-row">
-        <div class="app-icon" style="background:${p.bg}">${p.icon}</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:13px;font-weight:500">${p.name}</span>
-            <span style="font-size:10px;padding:1px 6px;border-radius:20px;background:${p.cat==="foydali"?'rgba(62,207,142,0.15)':p.cat==="chalg'ituvchi"?'rgba(255,107,107,0.15)':'rgba(138,138,158,0.15)'};color:${p.cat==="foydali"?'var(--green)':p.cat==="chalg'ituvchi"?'var(--coral)':'var(--muted)'}">${p.cat}</span>
-            ${over?`<span style="font-size:10px;color:var(--coral)">⚠ limitdan oshdi</span>`:''}
-          </div>
-          <div style="margin-top:4px">
-            <div class="progress-bar" style="height:5px">
-              <div class="progress-fill" style="width:${pct}%;background:${p.color}"></div>
-            </div>
-          </div>
-        </div>
-        <div style="text-align:right;min-width:50px">
-          <div style="font-size:13px;font-weight:600;color:${over?'var(--coral)':p.cat==="foydali"?'var(--green)':'var(--muted)'}">${hrs}h</div>
-          <div style="font-size:10px;color:var(--dim)">${pct}%</div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
+// ═══════════════════ SVG HELPERS ═══════════════════
+const icS = d => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="display:block"><path d="${d}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const icF = d => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="display:block"><path d="${d}" fill="currentColor"/></svg>`;
+const ICONS = {
+  dashboard: icF('M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z'),
+  sdl: icS('M3 17l4-8 4 4 3-5 5 5'),
+  ai: icS('M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z'),
+  knowledge: icS('M12 3c-1.2 5.4-3.6 8.4-9 9 5.4 1.2 8.4 3.6 9 9 1.2-5.4 3.6-8.4 9-9-5.4-1.2-8.4-3.6-9-9z'),
+  vark: icS('M12 2c-1.5 3-4 5-8 5 0 8 3 12 8 15 5-3 8-7 8-15-4 0-6.5-2-8-5z'),
+  clock: icS('M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-10V7m0 5l3 2'),
+  teacher: icS('M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z'),
+};
+const BELL = icS('M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9');
+const SEND = icS('M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z');
 
-function renderLimitControls(d) {
-  document.getElementById('limit-controls').innerHTML = d.platforms.map(p=>`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <span style="font-size:12px;flex:1;color:var(--muted)">${p.icon} ${p.name}</span>
-      <input class="limit-input" type="number" min="0" max="12" step="0.5"
-        value="${d.limits[p.name]||2}"
-        onchange="updateLimit('${p.name}',this.value)"
-        title="Soatlik limit">
-      <span style="font-size:11px;color:var(--dim)">h</span>
-    </div>
-  `).join('');
-}
+// ═══════════════════ DERIVED VALUES ═══════════════════
+function computeVals() {
+  const { screen, role, email, password, consentChecked, varkStep, varkAnswers, varkDone, chatInput, chatMessages, isAITyping, selectedKgNode } = state;
+  const lang = getLang();
+  const th = getTheme();
+  const t = I18N[lang];
+  const PC = th.primary, { contentBg, cardBg, textColor, mutedColor, borderColor, successColor, warningColor, dangerColor,
+    sidebarBg, sidebarDivColor, sidebarTextHigh, sidebarTextLow, navActiveText, navActiveBg, navInactiveText, navHoverBg, loginBg } = th;
 
-function updateLimit(platform, val) {
-  screenTimeData[currentSTStudent].limits[platform] = parseFloat(val);
-  renderScreenTime();
-}
+  const isApp = !['login','consent','vark'].includes(screen);
+  const tC = type => ({productive:successColor,neutral:warningColor,distraction:dangerColor})[type];
+  const nc = m => m>=80?successColor:m>=60?warningColor:dangerColor;
 
-function renderDonut(d) {
-  const canvas = document.getElementById('donut-canvas');
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,120,120);
-  const total = d.platforms.reduce((s,p)=>s+p.mins,0);
-  let startAngle = -Math.PI/2;
-  d.platforms.forEach(p => {
-    const slice = (p.mins/total)*Math.PI*2;
-    ctx.beginPath();
-    ctx.moveTo(60,60);
-    ctx.arc(60,60,52,startAngle,startAngle+slice);
-    ctx.closePath();
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = 0.85;
-    ctx.fill();
-    startAngle += slice;
-  });
-  // donut hole
-  ctx.globalAlpha = 1;
-  ctx.beginPath(); ctx.arc(60,60,34,0,Math.PI*2);
-  ctx.fillStyle = '#15161e'; ctx.fill();
-  document.getElementById('donut-total').textContent = d.total.toFixed(1);
-}
+  // user
+  const userNames = { student:'Alisher Karimov', teacher:'Malika Xoliqova', parent:'Aziz Karimov' };
+  const userName = userNames[role] || 'Foydalanuvchi';
 
-function renderHeatmap(d) {
-  const colors = ['rgba(255,255,255,0.05)','rgba(56,189,248,0.4)','rgba(255,107,107,0.45)'];
-  const intensity = d.heatmap;
-  const type = d.heatType;
-  document.getElementById('st-heatmap').innerHTML = intensity.map((v,i)=>{
-    const base = type[i]===1?'rgba(62,207,142,':'type[i]===2'?'rgba(255,107,107,':v===0?'rgba(255,255,255,0.04)':'rgba(124,110,245,';
-    let bg;
-    if(v===0) bg='rgba(255,255,255,0.04)';
-    else if(type[i]===1) bg=`rgba(56,189,248,${Math.min(v*0.12,0.7)})`;
-    else if(type[i]===2) bg=`rgba(255,107,107,${Math.min(v*0.1,0.65)})`;
-    else bg=`rgba(245,166,35,${Math.min(v*0.1,0.5)})`;
-    return `<div class="heat-cell" style="background:${bg}" title="${i}:00 — ${v>0?v+'x faollik':'faolsiz'}"></div>`;
-  }).join('');
-}
+  // nav
+  const navDefs = {
+    student:[{id:'dashboard',ic:'dashboard'},{id:'sdl',ic:'sdl'},{id:'ai',ic:'ai'},{id:'knowledge',ic:'knowledge'},{id:'vark',ic:'vark'}],
+    teacher:[{id:'dashboard',ic:'dashboard'},{id:'knowledge',ic:'knowledge'},{id:'teacher',ic:'teacher'},{id:'screentime',ic:'clock'}],
+    parent:[{id:'dashboard',ic:'dashboard'},{id:'screentime',ic:'clock'}],
+  };
+  const navLabels = {
+    dashboard:{uz:'Dashboard',ru:'Дэшборд',en:'Dashboard'},
+    sdl:{uz:'SDL Grafigi',ru:'График SDL',en:'SDL Graph'},
+    ai:{uz:'AI Yordamchi',ru:'ИИ Помощник',en:'AI Assistant'},
+    knowledge:{uz:"Bilim Tarmog'i",ru:'Граф знаний',en:'Knowledge Graph'},
+    vark:{uz:'VARK Testi',ru:'Тест VARK',en:'VARK Test'},
+    teacher:{uz:"O'qituvchi Paneli",ru:'Панель учителя',en:'Teacher Panel'},
+    screentime:{uz:'Ekran Vaqti',ru:'Экранное время',en:'Screen Time'},
+  };
+  const navItems = (navDefs[role||'student']||navDefs.student).map(item => ({
+    id:item.id, active: screen===item.id, iconEl: ICONS[item.ic], label: navLabels[item.id][lang]||navLabels[item.id].en,
+  }));
+  const pageTitleMap = { dashboard:'Dashboard', sdl:t.sdlChartTitle, ai:navLabels.ai[lang], knowledge:t.knowledgeTitle, teacher:t.teacherTitle, screentime:t.screenTimeTitle };
+  const currentPageTitle = pageTitleMap[screen] || 'Dashboard';
 
-function renderSTCharts(d) {
-  drawWeekChart(d);
-  drawRatioChart(d);
-}
-
-function drawWeekChart(d) {
-  const canvas = document.getElementById('st-week-chart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width = canvas.offsetWidth;
-  const h = canvas.height = 140;
-  ctx.clearRect(0,0,w,h);
-  const days=['Du','Se','Ch','Pa','Ju','Sh','Ya'];
-  const pad={t:10,r:10,b:26,l:34};
-  const gw=w-pad.l-pad.r, gh=h-pad.t-pad.b;
-  const max=Math.max(...d.weekData,4)+1, min=0;
-  const pts = d.weekData.map((v,i)=>({ x:pad.l+i*(gw/(d.weekData.length-1)), y:pad.t+gh-(v-min)/(max-min)*gh }));
-  // grid
-  [2,4,6,8].forEach(v=>{ if(v<=max){
-    const y=pad.t+gh-(v-min)/(max-min)*gh;
-    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+gw,y); ctx.stroke();
-    ctx.fillStyle='#4a4a62'; ctx.font='10px DM Sans';
-    ctx.textAlign='right'; ctx.fillText(v+'h',pad.l-4,y+3);
-  }});
-  // limit line at 2h
-  const limitY=pad.t+gh-(2-min)/(max-min)*gh;
-  ctx.setLineDash([4,3]); ctx.strokeStyle='rgba(255,107,107,0.4)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(pad.l,limitY); ctx.lineTo(pad.l+gw,limitY); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle='rgba(255,107,107,0.6)'; ctx.font='9px DM Sans'; ctx.textAlign='left';
-  ctx.fillText('limit',pad.l+2,limitY-3);
-  // bars
-  const bw=gw/d.weekData.length*0.55;
-  d.weekData.forEach((v,i)=>{
-    const x=pad.l+i*(gw/(d.weekData.length-1))-bw/2;
-    const bh=(v-min)/(max-min)*gh;
-    const over=v>2;
-    ctx.fillStyle=over?'rgba(255,107,107,0.6)':'rgba(62,207,142,0.5)';
-    ctx.beginPath(); ctx.roundRect(x,pad.t+gh-bh,bw,bh,3); ctx.fill();
-    ctx.fillStyle='#4a4a62'; ctx.font='10px DM Sans'; ctx.textAlign='center';
-    ctx.fillText(days[i],pad.l+i*(gw/(d.weekData.length-1)),h-6);
-  });
-}
-
-function drawRatioChart(d) {
-  const canvas = document.getElementById('st-ratio-chart');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width = canvas.offsetWidth;
-  const h = canvas.height = 140;
-  ctx.clearRect(0,0,w,h);
-  const useful = d.platforms.filter(p=>p.cat==='foydali').reduce((s,p)=>s+p.mins,0);
-  const waste = d.platforms.filter(p=>p.cat==="chalg'ituvchi").reduce((s,p)=>s+p.mins,0);
-  const neutral = d.platforms.filter(p=>p.cat==='neytral').reduce((s,p)=>s+p.mins,0);
-  const total = useful+waste+neutral||1;
-  const items=[
-    {label:'Foydali',val:useful,color:'#3ecf8e'},
-    {label:"Chalg'ituvchi",val:waste,color:'#ff6b6b'},
-    {label:'Neytral',val:neutral,color:'#8a8a9e'},
+  // dashboard
+  const dayLabels = {uz:['Du','Se','Ch','Pa','Ju','Sh','Ya'],ru:['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],en:['Mon','Tue','Wed','Thu','Fri','Sat','Sun']}[lang];
+  const appRaw = [{icon:'💻',name:'VS Code',mins:135,type:'productive'},{icon:'📓',name:'Notion',mins:90,type:'productive'},{icon:'▶️',name:'YouTube',mins:45,type:'neutral'},{icon:'📱',name:'Instagram',mins:32,type:'distraction'},{icon:'📖',name:'Coursera',mins:28,type:'productive'}];
+  const fmt = m => m>=60?`${Math.floor(m/60)}h ${m%60}min`:`${m}min`;
+  const appUsage = appRaw.map(a=>({...a,timeLabel:fmt(a.mins),pct:Math.round(a.mins/135*100),barColor:tC(a.type),typeColor:tC(a.type),typeBg:tC(a.type)+'18',typeLabel:t[a.type],iconBg:tC(a.type)+'16'}));
+  const goalItems = [
+    {label:lang==='uz'?"Kunlik o'qish":lang==='ru'?'Ежедневное обучение':'Daily study',value:'3.3/4h',pct:83,color:PC},
+    {label:'SDL',value:'87/100',pct:87,color:successColor},
+    {label:lang==='uz'?'Haftalik streak':lang==='ru'?'Серия недели':'Weekly streak',value:'5/7',pct:71,color:warningColor},
   ];
-  const barH=28, pad={t:14,l:80,r:14,b:14};
-  items.forEach((item,i)=>{
-    const y=pad.t+i*(barH+12);
-    const bw=(item.val/total)*(w-pad.l-pad.r);
-    ctx.fillStyle='rgba(255,255,255,0.05)';
-    ctx.beginPath(); ctx.roundRect(pad.l,y,w-pad.l-pad.r,barH,4); ctx.fill();
-    if(bw>0){
-      ctx.fillStyle=item.color; ctx.globalAlpha=0.75;
-      ctx.beginPath(); ctx.roundRect(pad.l,y,bw,barH,4); ctx.fill();
-      ctx.globalAlpha=1;
+  const aiTips = {uz:"Bu hafta SDL ko'rsatkichingiz 87 ga yetdi! VS Code'da 2 soatdan ortiq ishlayapsiz — zo'r! Kechqurun 30 daqiqa repetitsiya qiling.",ru:"Ваш SDL достиг 87 на этой неделе! Вы работаете в VS Code более 2 часов — отлично! Уделите 30 минут повторению вечером.",en:"Your SDL score reached 87 this week! 2+ hours in VS Code — great work! Try 30 minutes of review tonight."};
+  const statsCards = [
+    {icon:'📚',iconBg:PC+'18',value:lang==='ru'?'3ч 20мин':'3h 20min',label:lang==='uz'?"Bugungi o'qish":lang==='ru'?'Сегодняшнее обучение':"Today's study",change:'+12%',changeColor:successColor,changeBg:successColor+'18'},
+    {icon:'🎯',iconBg:successColor+'18',value:'87',label:lang==='uz'?"SDL Ko'rsatkichi":lang==='ru'?'SDL показатель':'SDL Score',change:'+5',changeColor:successColor,changeBg:successColor+'18'},
+    {icon:'⚡',iconBg:warningColor+'18',value:'12',label:lang==='uz'?'Faol streak':lang==='ru'?'Активная серия':'Active streak',change:lang==='uz'?'kun':lang==='ru'?'дней':'days',changeColor:warningColor,changeBg:warningColor+'18'},
+    {icon:'🔗',iconBg:PC+'18',value:'23',label:lang==='uz'?"O'rganilgan mavzular":lang==='ru'?'Изученные темы':'Topics mastered',change:'+3',changeColor:PC,changeBg:PC+'18'},
+  ];
+
+  // study bar chart
+  const hrs = [2.5,3.2,1.8,4.0,3.5,2.1,1.4];
+  const BW=420,BH=120,bW=38,bG=16,bPad=20,bInner=86,maxH=5;
+  let bars='';
+  [1,2,3,4].forEach(h=>{const y=10+bInner-(h/maxH)*bInner;bars+=`<line x1="${bPad}" y1="${y}" x2="${BW-bPad}" y2="${y}" stroke="${borderColor}" stroke-width="1" stroke-dasharray="4 4"/><text x="${bPad-4}" y="${y+4}" text-anchor="end" font-size="9" fill="${mutedColor}">${h}h</text>`;});
+  hrs.forEach((h,i)=>{const x=bPad+i*(bW+bG),bh=(h/maxH)*bInner,y=10+bInner-bh,isT=i===6;bars+=`<rect x="${x}" y="${y}" width="${bW}" height="${bh}" rx="5" fill="${isT?PC:PC+'55'}"/><text x="${x+bW/2}" y="${BH-1}" text-anchor="middle" font-size="10" fill="${mutedColor}">${dayLabels[i]}</text>`+(isT?`<text x="${x+bW/2}" y="${y-5}" text-anchor="middle" font-size="11" font-weight="600" fill="${PC}">${h}h</text>`:'');});
+  const studyBarChart = `<svg width="100%" height="${BH}" viewBox="0 0 ${BW} ${BH}" style="overflow:visible">${bars}</svg>`;
+
+  // sdl gauge
+  const sdlVal=87, GR=44, circ=2*Math.PI*GR;
+  const sdlGaugeEl = `<div style="position:relative;width:112px;height:112px;margin:0 auto"><svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="${GR}" fill="none" stroke="${borderColor}" stroke-width="10" transform="rotate(-90 56 56)"/><circle cx="56" cy="56" r="${GR}" fill="none" stroke="${PC}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-sdlVal/100)}" transform="rotate(-90 56 56)"/></svg><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center"><div style="font-size:22px;font-weight:700;color:${textColor};letter-spacing:-0.5px">${sdlVal}</div><div style="font-size:10px;color:${mutedColor}">/100</div></div></div>`;
+
+  // sdl page
+  const sdlVals=[22,38,45,41,62,74,69,87];
+  const sdlTimes=['3h 20min','4h 05min','3h 15min','2h 50min','4h 30min','3h 55min','3h 10min','4h 15min'];
+  const sColor=v=>v>=80?successColor:v>=60?warningColor:dangerColor;
+  const sStatus=v=>v>=80?(lang==='uz'?"Zo'r":lang==='ru'?'Отлично':'Excellent'):v>=60?(lang==='uz'?'Yaxshi':lang==='ru'?'Хорошо':'Good'):(lang==='uz'?'Sust':lang==='ru'?'Слабо':'Weak');
+  const sdlRows=sdlVals.map((v,i)=>({week:`H${i+1}`,sdl:v,pct:v,time:sdlTimes[i],color:sColor(v),statusColor:sColor(v),statusBg:sColor(v)+'18',status:sStatus(v)}));
+  const sdlStatCards=[
+    {label:lang==='uz'?'Bu hafta':lang==='ru'?'Эта неделя':'This week',value:'87',color:PC,sub:'/100'},
+    {label:lang==='uz'?'Eng yuqori':lang==='ru'?'Рекорд':'All-time high',value:'92',color:successColor,sub:lang==='uz'?'5-hafta':lang==='ru'?'Неделя 5':'Week 5'},
+    {label:lang==='uz'?"Haftalik o'qish":lang==='ru'?'Часов/нед':'Hours/week',value:'18.5h',color:warningColor,sub:lang==='uz'?'maqsad 20h':lang==='ru'?'цель 20ч':'goal 20h'},
+  ];
+  const LW=560,LH=160,LP=36,LPR=16,LPT=16,LPB=28,LIW=LW-LP-LPR,LIH=LH-LPT-LPB;
+  const lPts=sdlVals.map((v,i)=>[LP+i*(LIW/7),LPT+LIH*(1-v/100)]);
+  const lPath=lPts.map((p,i)=>(i===0?`M ${p[0]} ${p[1]}`:`L ${p[0]} ${p[1]}`)).join(' ');
+  const lFill=`${lPath} L ${lPts[7][0]} ${LPT+LIH} L ${lPts[0][0]} ${LPT+LIH} Z`;
+  let lineG='';
+  [0,25,50,75,100].forEach(v=>{const y=LPT+LIH*(1-v/100);lineG+=`<line x1="${LP}" y1="${y}" x2="${LW-LPR}" y2="${y}" stroke="${borderColor}" stroke-width="1" stroke-dasharray="4 4"/><text x="${LP-5}" y="${y+4}" text-anchor="end" font-size="9" fill="${mutedColor}">${v}</text>`;});
+  let lineDots='';
+  lPts.forEach((p,i)=>{lineDots+=`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fff" stroke="${PC}" stroke-width="2"/><text x="${p[0]}" y="${p[1]-10}" text-anchor="middle" font-size="10" font-weight="600" fill="${PC}">${sdlVals[i]}</text><text x="${p[0]}" y="${LH-1}" text-anchor="middle" font-size="9" fill="${mutedColor}">H${i+1}</text>`;});
+  const sdlLineChart=`<svg width="100%" height="${LH}" viewBox="0 0 ${LW} ${LH}" style="overflow:visible"><defs><linearGradient id="sdlGr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${PC}" stop-opacity="0.15"/><stop offset="100%" stop-color="${PC}" stop-opacity="0"/></linearGradient></defs>${lineG}<path d="${lFill}" fill="url(#sdlGr)"/><path d="${lPath}" fill="none" stroke="${PC}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${lineDots}</svg>`;
+
+  // AI chat
+  const sugLabels={uz:["Python haqida","Bugungi rej","SDL ko'rsatkich"],ru:["О Python","Plan на день","Мой SDL"],en:["About Python","Today's plan","My SDL score"]};
+  const aiSuggestions=(sugLabels[lang]||sugLabels.en);
+  const chatMsgs=chatMessages.map(m=>({...m,isUser:m.type==='user',isAI:m.type==='ai'}));
+
+  // knowledge graph
+  const KGD={
+    python:{x:290,y:190,r:40,label:'Python',mastery:85,time:'12h 30min',topics:lang==='uz'?['Sintaksis',"O'zgaruvchilar",'Tsikllar']:lang==='ru'?['Синтаксис','Переменные','Циклы']:['Syntax','Variables','Loops'],next:lang==='uz'?['Dekoratorlar','Generatorlar']:lang==='ru'?['Декораторы','Генераторы']:['Decorators','Generators'],conns:5},
+    vars:{x:130,y:85,r:26,label:lang==='uz'?"O'zgaruvchilar":lang==='ru'?'Переменные':'Variables',mastery:95,time:'4h 20min',topics:['Int','Float','String'],next:lang==='uz'?['Sinflar']:lang==='ru'?['Классы']:['Classes'],conns:2},
+    funcs:{x:450,y:90,r:28,label:lang==='uz'?'Funksiyalar':lang==='ru'?'Функции':'Functions',mastery:80,time:'5h 15min',topics:lang==='uz'?['Argumentlar','Lambda']:lang==='ru'?['Аргументы','Lambda']:['Arguments','Lambda'],next:lang==='uz'?['Closures']:lang==='ru'?['Замыкания']:['Closures'],conns:2},
+    oop:{x:460,y:280,r:30,label:'OOP',mastery:62,time:'6h',topics:lang==='uz'?['Sinflar','Meros']:lang==='ru'?['Классы','Наследование']:['Classes','Inheritance'],next:lang==='uz'?['Abstrakt']:lang==='ru'?['Абстракции']:['Abstract'],conns:3},
+    libs:{x:115,y:300,r:28,label:lang==='uz'?'Kutubxonalar':lang==='ru'?'Библиотеки':'Libraries',mastery:70,time:'3h 40min',topics:['NumPy','Pandas','Matplotlib'],next:['Scikit-learn'],conns:3},
+    ds:{x:290,y:350,r:26,label:lang==='uz'?"Ma'lumot Tuzilmalari":lang==='ru'?'Структуры данных':'Data Structures',mastery:55,time:'4h',topics:lang==='uz'?["Ro'yxat","Lug'at"]:lang==='ru'?['Список','Словарь']:['List','Dict'],next:lang==='uz'?['Daraxt']:lang==='ru'?['Дерево']:['Tree'],conns:3},
+    numpy:{x:65,y:410,r:20,label:'NumPy',mastery:68,time:'2h 10min',topics:['Array','Matrix'],next:['SciPy'],conns:2},
+    loops:{x:190,y:52,r:20,label:lang==='uz'?'Sikllar':lang==='ru'?'Циклы':'Loops',mastery:92,time:'3h 5min',topics:['for','while'],next:['Itertools'],conns:2},
+    classes:{x:430,y:365,r:20,label:lang==='uz'?'Klasslar':lang==='ru'?'Классы':'Classes',mastery:55,time:'2h 30min',topics:['__init__','self'],next:['MRO'],conns:2},
+  };
+  const KGE=[['python','vars'],['python','funcs'],['python','oop'],['python','libs'],['python','ds'],['libs','numpy'],['vars','loops'],['oop','classes']];
+  let kgEdges='';
+  KGE.forEach((e,i)=>{const na=KGD[e[0]],nb=KGD[e[1]],hi=selectedKgNode&&(selectedKgNode===e[0]||selectedKgNode===e[1]);kgEdges+=`<line x1="${na.x}" y1="${na.y}" x2="${nb.x}" y2="${nb.y}" stroke="${hi?PC:borderColor}" stroke-width="${hi?2:1.5}" ${hi?'':'stroke-dasharray="5 4"'}/>`;});
+  let kgNodes='';
+  Object.entries(KGD).forEach(([id,nd])=>{const sel=selectedKgNode===id,c=nc(nd.mastery);const lbl=nd.label.length>13?nd.label.substring(0,12)+'…':nd.label;kgNodes+=`<g class="kg-node" data-node="${id}" style="cursor:pointer">`+(sel?`<circle cx="${nd.x}" cy="${nd.y}" r="${nd.r+9}" fill="${c}18"/>`:'')+`<circle cx="${nd.x}" cy="${nd.y}" r="${nd.r}" fill="${sel?c:c+'1E'}" stroke="${c}" stroke-width="${sel?2.5:1.5}"/><text x="${nd.x}" y="${nd.y+(nd.label.length>10?-4:1)}" text-anchor="middle" font-size="${nd.r>24?11:9.5}" font-weight="600" fill="${sel?'#fff':c}" style="user-select:none;pointer-events:none">${lbl}</text><text x="${nd.x}" y="${nd.y+(nd.label.length>10?8:12)}" text-anchor="middle" font-size="8.5" fill="${sel?'rgba(255,255,255,0.75)':mutedColor}" style="user-select:none;pointer-events:none">${nd.mastery}%</text></g>`;});
+  const kgSvgEl=`<svg width="100%" height="100%" viewBox="0 0 560 450" style="display:block">${kgEdges}${kgNodes}</svg>`;
+  const selNode=selectedKgNode?KGD[selectedKgNode]:null;
+
+  // teacher
+  const teacherStats=[
+    {value:'6',label:lang==='uz'?"Jami o'quvchi":lang==='ru'?'Всего студентов':'Total students',color:textColor},
+    {value:'69',label:lang==='uz'?"O'rtacha SDL":lang==='ru'?'Средний SDL':'Average SDL',color:PC},
+    {value:'72%',label:lang==='uz'?"O'rtacha ball":lang==='ru'?'Средний балл':'Average score',color:successColor},
+    {value:'1',label:lang==='uz'?'Xavf ostida':lang==='ru'?'В группе риска':'At risk',color:dangerColor},
+  ];
+  const pColors=[PC,successColor,warningColor,'#A78BFA',dangerColor,'#06B6D4'];
+  const riskL={none:{c:successColor,b:successColor+'18',l:lang==='uz'?"Xavf yo'q":lang==='ru'?'Нет риска':'No risk'},low:{c:warningColor,b:warningColor+'18',l:lang==='uz'?'Past':lang==='ru'?'Низкий':'Low'},medium:{c:'#F59E0B',b:'#FEF3C7',l:lang==='uz'?"O'rta":lang==='ru'?'Средний':'Medium'},high:{c:dangerColor,b:dangerColor+'18',l:lang==='uz'?'Yuqori':lang==='ru'?'Высокий':'High'}};
+  const stuData=[{name:'Alisher Karimov',today:'3h 20min',sdl:82,score:87,risk:'low'},{name:"Malika Yo'ldosheva",today:'2h 10min',sdl:68,score:72,risk:'medium'},{name:'Bobur Toshmatov',today:'45min',sdl:38,score:45,risk:'high'},{name:'Zulfiya Nazarova',today:'4h 15min',sdl:94,score:91,risk:'none'},{name:'Jasur Abdullayev',today:'1h 50min',sdl:58,score:63,risk:'medium'},{name:'Nilufar Hamidova',today:'2h 40min',sdl:75,score:78,risk:'low'}];
+  const students=stuData.map((s,i)=>({...s,initial:s.name[0],avatarBg:pColors[i]||PC,sdlPct:s.sdl,sdlColor:nc(s.sdl),riskColor:riskL[s.risk].c,riskBg:riskL[s.risk].b,riskLabel:riskL[s.risk].l}));
+
+  // screen time
+  const timeCards=[
+    {icon:'⏱️',iconBg:PC+'18',label:lang==='uz'?'Bugun':lang==='ru'?'Сегодня':'Today',value:'5h 2min',color:textColor,sub:lang==='uz'?'jami ekran vaqti':lang==='ru'?'всего экранного времени':'total screen time'},
+    {icon:'✅',iconBg:successColor+'18',label:lang==='uz'?'Foydali':lang==='ru'?'Продуктивно':'Productive',value:'3h 13min',color:successColor,sub:'64%'},
+    {icon:'⚠️',iconBg:dangerColor+'18',label:lang==='uz'?"Chalg'ituvchi":lang==='ru'?'Отвлечение':'Distraction',value:'1h 4min',color:dangerColor,sub:'21%'},
+  ];
+  const screenApps=[{icon:'💻',name:'VS Code',mins:135,type:'productive'},{icon:'📓',name:'Notion',mins:90,type:'productive'},{icon:'▶️',name:'YouTube',mins:45,type:'neutral'},{icon:'📱',name:'Instagram',mins:32,type:'distraction'},{icon:'📖',name:'Coursera',mins:28,type:'productive'},{icon:'🌐',name:'Chrome',mins:32,type:'neutral'}]
+    .map(a=>({...a,timeLabel:fmt(a.mins),pct:Math.round(a.mins/135*100),barColor:tC(a.type),typeColor:tC(a.type),typeBg:tC(a.type)+'18',typeLabel:t[a.type]}));
+  const donutSegs=[{label:t.productive,pct:64,color:successColor},{label:t.neutral,pct:15,color:warningColor},{label:t.distraction,pct:21,color:dangerColor}];
+  const dc2=2*Math.PI*52; let dOff=0; let donutArcs='';
+  donutSegs.forEach(d=>{const dash=(d.pct/100)*dc2,off=-(dOff/100)*dc2+dc2*0.25;dOff+=d.pct;donutArcs+=`<circle cx="70" cy="70" r="52" fill="none" stroke="${d.color}" stroke-width="22" stroke-dasharray="${dash} ${dc2-dash}" stroke-dashoffset="${off}" style="transform:rotate(-90deg);transform-origin:70px 70px"/>`;});
+  const donutChartEl=`<div style="position:relative"><svg width="140" height="140" viewBox="0 0 140 140"><circle cx="70" cy="70" r="52" fill="none" stroke="${borderColor}" stroke-width="22"/>${donutArcs}</svg><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center"><div style="font-size:18px;font-weight:700;color:${textColor}">5h</div><div style="font-size:9px;color:${mutedColor}">total</div></div></div>`;
+
+  // vark
+  const totalQs=VARK_QS.length, curQ=VARK_QS[Math.min(varkStep,totalQs-1)];
+  const varkPct=Math.round(varkStep/totalQs*100);
+  const tC2={V:PC,A:successColor,R:warningColor,K:dangerColor};
+  const varkOpts=curQ?curQ.types.map((tp,i)=>({type:tp,label:(curQ.opts[lang]||curQ.opts.en)[i],tagBg:tC2[tp]+'1E',tagColor:tC2[tp],hoverBg:tC2[tp]+'0C'})):[];
+  const counts={V:0,A:0,R:0,K:0};
+  varkAnswers.forEach(a=>{if(counts[a]!==undefined)counts[a]++;});
+  const topT=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0]||'V';
+  const varkResultBars=['V','A','R','K'].map(tp=>({label:t.varkBtns[tp],pct:varkAnswers.length>0?Math.round(counts[tp]/varkAnswers.length*100):0,color:tC2[tp]}));
+
+  // consent
+  const cTexts={uz:["O'quv vaqtingiz va foydalanilgan dasturlar qayd etiladi","Ma'lumotlar faqat o'quv taraqqiyotingizni tahlil qilish uchun ishlatiladi","O'qituvchi va ota-onangiz ko'rishi mumkin","Barcha ma'lumotlar shifrlangan va xavfsiz saqlanadi"],ru:["Ваше учебное время и приложения будут записаны","Данные используются только для анализа прогресса","Учитель и родители могут просматривать","Все данные зашифрованы и хранятся безопасно"],en:["Your study time and used apps will be recorded","Data is used only to analyze your learning progress","Your teacher and parents may view this","All data is encrypted and stored securely"]};
+  const consentItems=(cTexts[lang]||cTexts.en).map((text,i)=>({text,icon:['📊','📈','👁️','🔒'][i],iconBg:[PC+'18',successColor+'18',warningColor+'18',successColor+'18'][i]}));
+
+  return {
+    lang,t,screen,role,isApp,PC,contentBg,cardBg,textColor,mutedColor,borderColor,successColor,warningColor,dangerColor,
+    sidebarBg,sidebarDivColor,sidebarTextHigh,sidebarTextLow,navActiveText,navActiveBg,navInactiveText,navHoverBg,loginBg,
+    email,password,consentChecked,consentItems,
+    varkStep,varkDone,varkPct,totalQs,varkQ:curQ?(curQ[lang]||curQ.en):'',varkOpts,
+    varkTopType:t.varkTypes[topT],varkDesc:t.varkDescs[topT],varkResultBars,
+    navItems,userName,userInitial:userName[0],roleLabel:t[role]||'',currentPageTitle,
+    statsCards,studyBarChart,appUsage,sdlGaugeEl,goalItems,aiTipText:aiTips[lang]||aiTips.en,
+    sdlStatCards,sdlLineChart,sdlRows,
+    chatMsgs,chatInput,isAITyping,aiSuggestions,
+    kgSvgEl,selNode,kgNodeColor:selNode?nc(selNode.mastery):PC,
+    teacherStats,students,timeCards,screenApps,donutChartEl,donutLegend:donutSegs,
+  };
+}
+
+// ═══════════════════ SCREEN TEMPLATES ═══════════════════
+function langSwitcher(V, big){
+  const lb=l=>({bg:V.lang===l?'#fff':'transparent',color:V.lang===l?V.textColor:V.mutedColor});
+  const pad=big?'5px 12px':'4px 10px', radius=big?'6px':'5px';
+  return ['uz','ru','en'].map(l=>{const s=lb(l);return `<button data-action="lang" data-lang="${l}" style="padding:${pad};border-radius:${radius};font-size:12px;font-weight:600;background:${s.bg};color:${s.color};transition:all .15s">${l.toUpperCase()}</button>`;}).join('');
+}
+
+function tplLogin(V){
+  const rSty=r=>({border:V.role===r?`2px solid ${V.PC}`:`2px solid ${V.borderColor}`,bg:V.role===r?V.PC+'14':'transparent',color:V.role===r?V.PC:V.textColor});
+  const roles=[['student','🎓',V.t.student],['teacher','👨‍🏫',V.t.teacher],['parent','👨‍👩‍👧',V.t.parent]];
+  return `<div style="min-height:100vh;background:${V.loginBg};display:flex;align-items:center;justify-content:center;position:relative;padding:24px">
+    <div style="position:absolute;top:20px;right:24px;display:flex;gap:3px;background:rgba(255,255,255,0.75);backdrop-filter:blur(8px);border-radius:8px;padding:3px">${langSwitcher(V,true)}</div>
+    <div style="background:#fff;border-radius:20px;padding:44px 48px;width:490px;box-shadow:0 8px 48px rgba(0,0,0,0.09),0 1px 4px rgba(0,0,0,0.04);animation:fadeUp .5s ease both">
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:32px;gap:10px">
+        <div style="width:52px;height:52px;border-radius:15px;background:linear-gradient(135deg,${V.PC},${V.PC}BB);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px ${V.PC}44"><span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-1px">PLN</span></div>
+        <div style="text-align:center"><h1 style="font-size:21px;font-weight:700;color:${V.textColor};letter-spacing:-0.5px">Personal Learning Network</h1><p style="font-size:13.5px;color:${V.mutedColor};margin-top:4px">${V.t.subtitle}</p></div>
+      </div>
+      <label style="display:block;font-size:12px;font-weight:600;color:${V.mutedColor};margin-bottom:5px;text-transform:uppercase;letter-spacing:0.4px">${V.t.email}</label>
+      <input type="email" data-action="email" value="${V.email}" placeholder="talaba@example.com" style="width:100%;padding:11px 14px;border:1.5px solid ${V.borderColor};border-radius:10px;font-size:14.5px;color:${V.textColor};background:#FAFAFA;margin-bottom:14px;transition:border-color .15s"/>
+      <label style="display:block;font-size:12px;font-weight:600;color:${V.mutedColor};margin-bottom:5px;text-transform:uppercase;letter-spacing:0.4px">${V.t.password}</label>
+      <input type="password" data-action="password" value="${V.password}" placeholder="••••••••" style="width:100%;padding:11px 14px;border:1.5px solid ${V.borderColor};border-radius:10px;font-size:14.5px;color:${V.textColor};background:#FAFAFA;margin-bottom:22px;transition:border-color .15s"/>
+      <p style="font-size:12px;font-weight:600;color:${V.mutedColor};margin-bottom:10px;text-transform:uppercase;letter-spacing:0.4px">${V.t.selectRole}</p>
+      <div style="display:flex;gap:10px;margin-bottom:26px">
+        ${roles.map(([r,emo,lbl])=>{const s=rSty(r);return `<button class="hov-lift" data-action="role" data-role="${r}" style="flex:1;padding:14px 8px;border-radius:12px;border:${s.border};background:${s.bg};text-align:center"><div style="font-size:24px;margin-bottom:5px">${emo}</div><div style="font-size:13px;font-weight:600;color:${s.color}">${lbl}</div></button>`;}).join('')}
+      </div>
+      <button id="login-btn" class="hov-op" data-action="login" style="width:100%;padding:13px;border-radius:11px;background:${V.PC};color:#fff;font-size:15px;font-weight:600;letter-spacing:-0.2px;opacity:${V.role&&V.email?'1':'0.5'}">${V.t.signIn}</button>
+    </div>
+  </div>`;
+}
+
+function tplConsent(V){
+  return `<div style="min-height:100vh;background:${V.loginBg};display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .35s ease">
+    <div style="background:#fff;border-radius:20px;padding:44px 48px;width:520px;box-shadow:0 8px 48px rgba(0,0,0,0.09)">
+      <div style="text-align:center;margin-bottom:26px">
+        <div style="width:52px;height:52px;border-radius:15px;background:${V.PC}1A;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:24px">🛡️</div>
+        <h2 style="font-size:20px;font-weight:700;color:${V.textColor};letter-spacing:-0.4px">${V.t.consentTitle}</h2>
+        <p style="font-size:13.5px;color:${V.mutedColor};margin-top:5px">${V.t.consentSub}</p>
+      </div>
+      <div style="background:${V.contentBg};border-radius:12px;padding:6px;margin-bottom:22px">
+        ${V.consentItems.map(ci=>`<div style="display:flex;align-items:flex-start;gap:12px;padding:11px 14px"><div style="width:26px;height:26px;border-radius:7px;background:${ci.iconBg};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${ci.icon}</div><p style="font-size:13.5px;color:${V.textColor};line-height:1.55">${ci.text}</p></div>`).join('')}
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:11px;margin-bottom:22px;cursor:pointer"><input type="checkbox" data-action="consentToggle" ${V.consentChecked?'checked':''} style="width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:${V.PC};cursor:pointer"/><span style="font-size:13.5px;color:${V.textColor};line-height:1.5">${V.t.consentCheck}</span></label>
+      <button class="hov-op" data-action="consentContinue" style="width:100%;padding:13px;border-radius:11px;background:${V.PC};color:#fff;font-size:15px;font-weight:600;opacity:${V.consentChecked?'1':'0.45'}">${V.t.continue}</button>
+      <button data-action="goBack" style="width:100%;padding:10px;margin-top:8px;border-radius:11px;color:${V.mutedColor};font-size:14px">← ${V.t.back}</button>
+    </div>
+  </div>`;
+}
+
+function tplVark(V){
+  const body = V.varkDone ? `<div style="animation:fadeIn .4s ease">
+      <p style="text-align:center;font-size:12px;font-weight:600;color:${V.mutedColor};margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">${V.t.varkResult}</p>
+      <h3 style="text-align:center;font-size:22px;font-weight:700;color:${V.PC};margin-bottom:20px;letter-spacing:-0.5px">${V.varkTopType}</h3>
+      <div style="margin-bottom:22px;display:flex;flex-direction:column;gap:10px">
+        ${V.varkResultBars.map(b=>`<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px;font-weight:500;color:${V.textColor}">${b.label}</span><span style="font-size:13px;font-weight:700;color:${b.color}">${b.pct}%</span></div><div style="height:7px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${b.pct}%;background:${b.color};border-radius:999px;transition:width .7s ease"></div></div></div>`).join('')}
+      </div>
+      <div style="background:${V.PC}0F;border-radius:12px;padding:16px;margin-bottom:20px"><p style="font-size:13.5px;color:${V.textColor};line-height:1.6">${V.varkDesc}</p></div>
+      <button class="hov-op" data-action="varkContinue" style="width:100%;padding:13px;border-radius:11px;background:${V.PC};color:#fff;font-size:15px;font-weight:600">${V.t.continue} →</button>
+    </div>`
+  : `<div style="margin-bottom:22px"><div style="display:flex;justify-content:space-between;margin-bottom:7px"><span style="font-size:12px;font-weight:600;color:${V.mutedColor};text-transform:uppercase;letter-spacing:0.4px">${V.varkStep}/${V.totalQs}</span><span style="font-size:12px;font-weight:600;color:${V.PC}">${V.varkPct}%</span></div><div style="height:6px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${V.varkPct}%;background:${V.PC};border-radius:999px;transition:width .4s ease"></div></div></div>
+      <p style="font-size:16px;font-weight:600;color:${V.textColor};line-height:1.5;margin-bottom:18px">${V.varkQ}</p>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        ${V.varkOpts.map(o=>`<button class="opt-btn" data-action="vark" data-type="${o.type}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;border:1.5px solid ${V.borderColor};background:${V.contentBg};width:100%;transition:all .15s"><span style="width:28px;height:28px;border-radius:7px;background:${o.tagBg};color:${o.tagColor};font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${o.type}</span><span style="font-size:14px;color:${V.textColor};line-height:1.4;text-align:left">${o.label}</span></button>`).join('')}
+      </div>`;
+  return `<div style="min-height:100vh;background:${V.loginBg};display:flex;align-items:center;justify-content:center;padding:32px;animation:fadeIn .35s ease">
+    <div style="background:#fff;border-radius:20px;padding:44px 48px;width:560px;box-shadow:0 8px 48px rgba(0,0,0,0.09)">
+      <div style="text-align:center;margin-bottom:26px"><div style="width:48px;height:48px;border-radius:14px;background:${V.PC}1A;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px">🧠</div><h2 style="font-size:19px;font-weight:700;color:${V.textColor};letter-spacing:-0.4px">${V.t.varkTitle}</h2></div>
+      ${body}
+    </div>
+  </div>`;
+}
+
+function pageDashboard(V){
+  return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px">
+    ${V.statsCards.map(c=>`<div style="background:${V.cardBg};border-radius:14px;padding:18px;border:1px solid ${V.borderColor}"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="width:36px;height:36px;border-radius:10px;background:${c.iconBg};display:flex;align-items:center;justify-content:center;font-size:16px">${c.icon}</div><span style="font-size:12px;font-weight:600;color:${c.changeColor};background:${c.changeBg};padding:3px 8px;border-radius:999px">${c.change}</span></div><div style="font-size:24px;font-weight:700;color:${V.textColor};letter-spacing:-0.8px;margin-bottom:3px">${c.value}</div><div style="font-size:12.5px;color:${V.mutedColor}">${c.label}</div></div>`).join('')}
+  </div>
+  <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div><h3 style="font-size:14px;font-weight:600;color:${V.textColor}">${V.t.weeklyStudy}</h3><p style="font-size:12px;color:${V.mutedColor};margin-top:2px">${V.t.last7days}</p></div><div style="font-size:22px;font-weight:700;color:${V.PC};letter-spacing:-0.5px">18.5h</div></div>${V.studyBarChart}</div>
+      <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><h3 style="font-size:14px;font-weight:600;color:${V.textColor};margin-bottom:14px">${V.t.topApps}</h3><div style="display:flex;flex-direction:column;gap:10px">
+        ${V.appUsage.map(a=>`<div style="display:flex;align-items:center;gap:12px"><div style="width:32px;height:32px;border-radius:8px;background:${a.iconBg};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${a.icon}</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:500;color:${V.textColor}">${a.name}</span><span style="font-size:12px;color:${V.mutedColor}">${a.timeLabel}</span></div><div style="height:5px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${a.pct}%;background:${a.barColor};border-radius:999px"></div></div></div><span style="font-size:10.5px;font-weight:600;color:${a.typeColor};background:${a.typeBg};padding:2px 7px;border-radius:999px;flex-shrink:0">${a.typeLabel}</span></div>`).join('')}
+      </div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor};text-align:center"><h3 style="font-size:14px;font-weight:600;color:${V.textColor};margin-bottom:16px">${V.t.sdlScore}</h3>${V.sdlGaugeEl}<p style="font-size:12px;color:${V.mutedColor};margin-top:10px">${V.t.thisWeek}</p><button data-action="nav" data-screen="sdl" style="margin-top:10px;padding:8px 20px;border-radius:8px;background:${V.PC}1A;color:${V.PC};font-size:13px;font-weight:600">${V.t.viewDetails} →</button></div>
+      <div style="background:linear-gradient(135deg,${V.PC}1A,${V.PC}08);border-radius:14px;padding:18px;border:1px solid ${V.PC}22"><div style="display:flex;align-items:center;gap:7px;margin-bottom:9px"><span style="font-size:15px">✨</span><span style="font-size:12px;font-weight:700;color:${V.PC};text-transform:uppercase;letter-spacing:0.5px">${V.t.aiTip}</span></div><p style="font-size:13.5px;color:${V.textColor};line-height:1.6">${V.aiTipText}</p><button class="hov-op" data-action="nav" data-screen="ai" style="margin-top:12px;padding:7px 16px;border-radius:8px;background:${V.PC};color:#fff;font-size:12.5px;font-weight:600">${V.t.askAI} →</button></div>
+      <div style="background:${V.cardBg};border-radius:14px;padding:18px;border:1px solid ${V.borderColor}"><h3 style="font-size:14px;font-weight:600;color:${V.textColor};margin-bottom:14px">${V.t.weeklyGoal}</h3><div style="display:flex;flex-direction:column;gap:10px">
+        ${V.goalItems.map(g=>`<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px;color:${V.textColor}">${g.label}</span><span style="font-size:12px;font-weight:600;color:${g.color}">${g.value}</span></div><div style="height:5px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${g.pct}%;background:${g.color};border-radius:999px;transition:width .5s"></div></div></div>`).join('')}
+      </div></div>
+    </div>
+  </div>`;
+}
+
+function pageSDL(V){
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
+    ${V.sdlStatCards.map(s=>`<div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><div style="font-size:12px;font-weight:600;color:${V.mutedColor};text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">${s.label}</div><div style="font-size:28px;font-weight:700;color:${s.color};letter-spacing:-0.8px">${s.value}</div><div style="font-size:12px;color:${V.mutedColor};margin-top:4px">${s.sub}</div></div>`).join('')}
+  </div>
+  <div style="background:${V.cardBg};border-radius:14px;padding:24px;border:1px solid ${V.borderColor};margin-bottom:18px"><div style="margin-bottom:20px"><h3 style="font-size:15px;font-weight:600;color:${V.textColor}">${V.t.sdlChartTitle}</h3><p style="font-size:12.5px;color:${V.mutedColor};margin-top:3px">${V.t.last8weeks}</p></div>${V.sdlLineChart}</div>
+  <div style="background:${V.cardBg};border-radius:14px;border:1px solid ${V.borderColor};overflow:hidden"><div style="padding:16px 20px;border-bottom:1px solid ${V.borderColor}"><h3 style="font-size:14px;font-weight:600;color:${V.textColor}">${V.t.weeklyBreakdown}</h3></div>
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="background:${V.contentBg}">
+      ${[V.t.week,'SDL',V.t.studyTime,V.t.status].map(h=>`<th style="padding:10px 20px;text-align:left;font-size:11.5px;font-weight:600;color:${V.mutedColor};text-transform:uppercase;letter-spacing:0.4px">${h}</th>`).join('')}
+    </tr></thead><tbody>
+      ${V.sdlRows.map(r=>`<tr class="row-hov" style="border-top:1px solid ${V.borderColor}"><td style="padding:12px 20px;font-size:13.5px;font-weight:500;color:${V.textColor}">${r.week}</td><td style="padding:12px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="width:80px;height:5px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${r.pct}%;background:${r.color};border-radius:999px"></div></div><span style="font-size:13.5px;font-weight:600;color:${r.color}">${r.sdl}</span></div></td><td style="padding:12px 20px;font-size:13.5px;color:${V.textColor}">${r.time}</td><td style="padding:12px 20px"><span style="font-size:12px;font-weight:600;color:${r.statusColor};background:${r.statusBg};padding:3px 10px;border-radius:999px">${r.status}</span></td></tr>`).join('')}
+    </tbody></table>
+  </div>`;
+}
+
+function pageAI(V){
+  const msgs = V.chatMsgs.map(m=> m.isUser
+    ? `<div style="display:flex;justify-content:flex-end"><div style="max-width:70%;background:${V.PC};color:#fff;border-radius:14px 14px 3px 14px;padding:12px 16px;font-size:14px;line-height:1.55">${m.text}<div style="font-size:10.5px;opacity:0.6;margin-top:5px;text-align:right">${m.time}</div></div></div>`
+    : `<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:30px;height:30px;border-radius:8px;background:${V.PC};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px">🤖</div><div style="max-width:75%;background:${V.cardBg};border:1px solid ${V.borderColor};border-radius:3px 14px 14px 14px;padding:12px 16px;font-size:14px;color:${V.textColor};line-height:1.6">${m.text}<div style="font-size:10.5px;color:${V.mutedColor};margin-top:5px">${m.time}</div></div></div>`
+  ).join('');
+  const typing = V.isAITyping ? `<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:30px;height:30px;border-radius:8px;background:${V.PC};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🤖</div><div style="background:${V.cardBg};border:1px solid ${V.borderColor};border-radius:3px 14px 14px 14px;padding:14px 18px;display:flex;gap:5px;align-items:center"><span style="width:7px;height:7px;border-radius:50%;background:${V.mutedColor};display:inline-block;animation:blink 1.2s infinite 0s"></span><span style="width:7px;height:7px;border-radius:50%;background:${V.mutedColor};display:inline-block;animation:blink 1.2s infinite .2s"></span><span style="width:7px;height:7px;border-radius:50%;background:${V.mutedColor};display:inline-block;animation:blink 1.2s infinite .4s"></span></div></div>` : '';
+  return `<div style="display:flex;flex-direction:column;height:calc(100vh - 114px)">
+    <div id="pln-chat" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-bottom:16px">
+      <div style="background:${V.cardBg};border-radius:16px;padding:18px;border:1px solid ${V.borderColor};display:flex;gap:13px;align-items:flex-start"><div style="width:36px;height:36px;border-radius:10px;background:${V.PC};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤖</div><div style="flex:1"><p style="font-size:12.5px;font-weight:700;color:${V.PC};margin-bottom:6px">AI Assistant</p><p style="font-size:14px;color:${V.textColor};line-height:1.6">${V.t.aiWelcome}</p><div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:12px">${V.aiSuggestions.map(s=>`<button class="sug-btn" data-action="suggest" data-label="${s}" style="padding:6px 13px;border-radius:8px;border:1.5px solid ${V.borderColor};font-size:12.5px;color:${V.textColor};background:${V.contentBg}">${s}</button>`).join('')}</div></div></div>
+      ${msgs}${typing}
+    </div>
+    <div style="background:${V.cardBg};border:1px solid ${V.borderColor};border-radius:14px;padding:11px 14px;display:flex;gap:10px;align-items:flex-end;flex-shrink:0;margin-top:14px"><textarea data-action="chat" placeholder="${V.t.aiPlaceholder}" rows="1" style="flex:1;font-size:14px;color:${V.textColor};line-height:1.5;max-height:120px;overflow-y:auto;border:none;outline:none;background:transparent">${V.chatInput}</textarea><button id="send-btn" data-action="chatSend" style="width:38px;height:38px;border-radius:10px;background:${V.PC};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;opacity:${V.chatInput.trim()?'1':'0.4'}">${SEND}</button></div>
+  </div>`;
+}
+
+function pageKnowledge(V){
+  const details = V.selNode ? `<div style="animation:fadeIn .25s ease">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px"><div style="width:40px;height:40px;border-radius:11px;background:${V.kgNodeColor};display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:700">${V.selNode.label[0]}</div><div><h3 style="font-size:15px;font-weight:700;color:${V.textColor}">${V.selNode.label}</h3><p style="font-size:12px;color:${V.mutedColor};margin-top:2px">${V.t.masteryLevel}</p></div></div>
+      <div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12.5px;color:${V.mutedColor}">${V.t.mastery}</span><span style="font-size:12.5px;font-weight:700;color:${V.kgNodeColor}">${V.selNode.mastery}%</span></div><div style="height:8px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${V.selNode.mastery}%;background:${V.kgNodeColor};border-radius:999px;transition:width .5s"></div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"><div style="background:${V.contentBg};border-radius:10px;padding:11px"><div style="font-size:10px;color:${V.mutedColor};text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">${V.t.timeSpent}</div><div style="font-size:15px;font-weight:700;color:${V.textColor}">${V.selNode.time}</div></div><div style="background:${V.contentBg};border-radius:10px;padding:11px"><div style="font-size:10px;color:${V.mutedColor};text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">${V.t.connections}</div><div style="font-size:15px;font-weight:700;color:${V.textColor}">${V.selNode.conns}</div></div></div>
+      <p style="font-size:11.5px;font-weight:600;color:${V.mutedColor};margin-bottom:7px;text-transform:uppercase;letter-spacing:0.4px">${V.t.subtopics}</p><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">${V.selNode.topics.map(tp=>`<span style="font-size:12px;padding:4px 10px;border-radius:6px;background:${V.kgNodeColor}1A;color:${V.kgNodeColor};font-weight:500">${tp}</span>`).join('')}</div>
+      <p style="font-size:11.5px;font-weight:600;color:${V.mutedColor};margin-bottom:7px;text-transform:uppercase;letter-spacing:0.4px">${V.t.nextTopics}</p><div style="display:flex;flex-wrap:wrap;gap:5px">${V.selNode.next.map(nx=>`<span style="font-size:12px;padding:4px 10px;border-radius:6px;border:1.5px dashed ${V.borderColor};color:${V.mutedColor};font-weight:500">+ ${nx}</span>`).join('')}</div>
+    </div>`
+  : `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:${V.mutedColor}"><div style="font-size:36px;margin-bottom:12px">🕸️</div><p style="font-size:14px;font-weight:500;color:${V.textColor};margin-bottom:6px">${V.t.kgSelectNode}</p><p style="font-size:12.5px;line-height:1.5">${V.t.kgSelectNodeSub}</p></div>`;
+  return `<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;height:calc(100vh - 114px)">
+    <div style="background:${V.cardBg};border-radius:14px;border:1px solid ${V.borderColor};padding:20px;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0"><div><h3 style="font-size:14px;font-weight:600;color:${V.textColor}">${V.t.knowledgeTitle}</h3><p style="font-size:12px;color:${V.mutedColor};margin-top:2px">${V.t.knowledgeSub}</p></div><div style="display:flex;gap:14px"><div style="display:flex;align-items:center;gap:5px"><div style="width:9px;height:9px;border-radius:50%;background:${V.successColor}"></div><span style="font-size:11px;color:${V.mutedColor}">80%+</span></div><div style="display:flex;align-items:center;gap:5px"><div style="width:9px;height:9px;border-radius:50%;background:${V.warningColor}"></div><span style="font-size:11px;color:${V.mutedColor}">60%+</span></div><div style="display:flex;align-items:center;gap:5px"><div style="width:9px;height:9px;border-radius:50%;background:${V.dangerColor}"></div><span style="font-size:11px;color:${V.mutedColor}">&lt;60%</span></div></div></div>
+      <div style="flex:1;overflow:hidden">${V.kgSvgEl}</div>
+    </div>
+    <div style="background:${V.cardBg};border-radius:14px;border:1px solid ${V.borderColor};padding:20px;overflow-y:auto">${details}</div>
+  </div>`;
+}
+
+function pageTeacher(V){
+  return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px">
+    ${V.teacherStats.map(ts=>`<div style="background:${V.cardBg};border-radius:14px;padding:18px;border:1px solid ${V.borderColor}"><div style="font-size:26px;font-weight:700;color:${ts.color};letter-spacing:-0.8px;margin-bottom:4px">${ts.value}</div><div style="font-size:12.5px;color:${V.mutedColor}">${ts.label}</div></div>`).join('')}
+  </div>
+  <div style="background:${V.cardBg};border-radius:14px;border:1px solid ${V.borderColor};overflow:hidden"><div style="padding:16px 20px;border-bottom:1px solid ${V.borderColor};display:flex;align-items:center;justify-content:space-between"><h3 style="font-size:14px;font-weight:600;color:${V.textColor}">${V.t.studentList}</h3><span style="font-size:12.5px;color:${V.mutedColor}">6 ${V.t.students}</span></div>
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="background:${V.contentBg}">
+      ${[V.t.name,V.t.todayStudy,'SDL',V.t.score,V.t.risk].map(h=>`<th style="padding:10px 20px;text-align:left;font-size:11.5px;font-weight:600;color:${V.mutedColor};text-transform:uppercase;letter-spacing:0.4px">${h}</th>`).join('')}
+    </tr></thead><tbody>
+      ${V.students.map(s=>`<tr class="row-hov" style="border-top:1px solid ${V.borderColor}"><td style="padding:12px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:8px;background:${s.avatarBg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${s.initial}</div><span style="font-size:13.5px;font-weight:500;color:${V.textColor}">${s.name}</span></div></td><td style="padding:12px 20px;font-size:13.5px;color:${V.textColor}">${s.today}</td><td style="padding:12px 20px"><div style="display:flex;align-items:center;gap:8px"><div style="width:48px;height:4px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${s.sdlPct}%;background:${s.sdlColor};border-radius:999px"></div></div><span style="font-size:13px;font-weight:600;color:${s.sdlColor}">${s.sdl}</span></div></td><td style="padding:12px 20px;font-size:13.5px;font-weight:600;color:${V.textColor}">${s.score}%</td><td style="padding:12px 20px"><span style="font-size:12px;font-weight:600;color:${s.riskColor};background:${s.riskBg};padding:3px 10px;border-radius:999px">${s.riskLabel}</span></td></tr>`).join('')}
+    </tbody></table>
+  </div>`;
+}
+
+function pageScreenTime(V){
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
+    ${V.timeCards.map(tc=>`<div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><div style="display:flex;align-items:center;gap:9px;margin-bottom:12px"><div style="width:32px;height:32px;border-radius:9px;background:${tc.iconBg};display:flex;align-items:center;justify-content:center;font-size:15px">${tc.icon}</div><span style="font-size:12px;font-weight:600;color:${V.mutedColor};text-transform:uppercase;letter-spacing:0.4px">${tc.label}</span></div><div style="font-size:26px;font-weight:700;color:${tc.color};letter-spacing:-0.5px">${tc.value}</div><div style="font-size:12px;color:${V.mutedColor};margin-top:4px">${tc.sub}</div></div>`).join('')}
+  </div>
+  <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:16px">
+    <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><h3 style="font-size:14px;font-weight:600;color:${V.textColor};margin-bottom:16px">${V.t.appBreakdown}</h3><div style="display:flex;flex-direction:column;gap:12px">
+      ${V.screenApps.map(a=>`<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><div style="display:flex;align-items:center;gap:9px"><span style="font-size:16px">${a.icon}</span><span style="font-size:13.5px;font-weight:500;color:${V.textColor}">${a.name}</span><span style="font-size:11px;font-weight:600;color:${a.typeColor};background:${a.typeBg};padding:2px 7px;border-radius:999px">${a.typeLabel}</span></div><span style="font-size:13px;font-weight:600;color:${V.textColor}">${a.timeLabel}</span></div><div style="height:5px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${a.pct}%;background:${a.barColor};border-radius:999px"></div></div></div>`).join('')}
+    </div></div>
+    <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor};display:flex;flex-direction:column;align-items:center"><h3 style="font-size:14px;font-weight:600;color:${V.textColor};margin-bottom:16px;align-self:flex-start">${V.t.timeDistribution}</h3>${V.donutChartEl}<div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;align-self:stretch">
+      ${V.donutLegend.map(l=>`<div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><div style="width:8px;height:8px;border-radius:50%;background:${l.color}"></div><span style="font-size:13px;color:${V.textColor}">${l.label}</span></div><span style="font-size:13px;font-weight:600;color:${l.color}">${l.pct}%</span></div>`).join('')}
+    </div></div>
+  </div>`;
+}
+
+function tplApp(V){
+  const nav = V.navItems.map(n=>`<button class="nav-btn" data-action="nav" data-screen="${n.id}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:9px;${n.active?`background:${V.navActiveBg};`:''}"><span style="color:${n.active?V.navActiveText:V.navInactiveText};display:flex;align-items:center;flex-shrink:0">${n.iconEl}</span><span style="font-size:13.5px;font-weight:${n.active?'600':'400'};color:${n.active?V.navActiveText:V.navInactiveText}">${n.label}</span></button>`).join('');
+  let page='';
+  switch(V.screen){
+    case 'dashboard': page=pageDashboard(V);break;
+    case 'sdl': page=pageSDL(V);break;
+    case 'ai': page=pageAI(V);break;
+    case 'knowledge': page=pageKnowledge(V);break;
+    case 'teacher': page=pageTeacher(V);break;
+    case 'screentime': page=pageScreenTime(V);break;
+    default: page=pageDashboard(V);
+  }
+  return `<div style="display:flex;height:100vh;overflow:hidden;background:${V.contentBg}">
+    <div style="width:240px;background:${V.sidebarBg};display:flex;flex-direction:column;border-right:1px solid ${V.sidebarDivColor};flex-shrink:0">
+      <div style="padding:18px 16px;border-bottom:1px solid ${V.sidebarDivColor};display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,${V.PC},${V.PC}BB);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:11px;font-weight:800;color:#fff">PLN</span></div><div><div style="font-size:13.5px;font-weight:700;color:${V.sidebarTextHigh};letter-spacing:-0.3px">PLN</div><div style="font-size:10.5px;color:${V.sidebarTextLow}">Learning Network</div></div></div>
+      <div style="flex:1;padding:10px 8px;overflow-y:auto;display:flex;flex-direction:column;gap:1px">${nav}</div>
+      <div style="padding:12px 10px;border-top:1px solid ${V.sidebarDivColor}"><div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:10px"><div style="width:32px;height:32px;border-radius:9px;background:${V.PC};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">${V.userInitial}</div><div style="min-width:0"><div style="font-size:13px;font-weight:600;color:${V.sidebarTextHigh};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${V.userName}</div><div style="font-size:11px;color:${V.sidebarTextLow}">${V.roleLabel}</div></div></div><button data-action="logout" style="width:100%;margin-top:3px;padding:7px 10px;border-radius:8px;font-size:12.5px;color:${V.sidebarTextLow};text-align:left">${V.t.logout}</button></div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+      <div style="height:58px;background:${V.cardBg};border-bottom:1px solid ${V.borderColor};display:flex;align-items:center;padding:0 24px;gap:14px;flex-shrink:0"><h2 style="flex:1;font-size:15.5px;font-weight:600;color:${V.textColor};letter-spacing:-0.3px">${V.currentPageTitle}</h2><div style="display:flex;gap:2px;background:${V.contentBg};border-radius:7px;padding:3px">${langSwitcher(V,false)}</div><button style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:${V.mutedColor};position:relative">${BELL}<span style="position:absolute;top:7px;right:7px;width:7px;height:7px;background:${V.dangerColor};border-radius:50%;border:2px solid ${V.cardBg}"></span></button><div style="width:34px;height:34px;border-radius:10px;background:${V.PC};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff">${V.userInitial}</div></div>
+      <div style="flex:1;overflow-y:auto;padding:28px;animation:fadeIn .3s ease" id="pln-page">${page}</div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════ RENDER ═══════════════════
+function render(){
+  const V = computeVals();
+  const th = getTheme();
+  const r = document.documentElement.style;
+  r.setProperty('--primary', th.primary);
+  r.setProperty('--content-bg', th.contentBg);
+  r.setProperty('--nav-hover', th.navHoverBg);
+  let html;
+  if(V.screen==='login') html=tplLogin(V);
+  else if(V.screen==='consent') html=tplConsent(V);
+  else if(V.screen==='vark') html=tplVark(V);
+  else html=tplApp(V);
+  document.getElementById('root').innerHTML = html;
+  if(V.screen==='ai'){ const c=document.getElementById('pln-chat'); if(c) c.scrollTop=c.scrollHeight; }
+}
+
+function sendChat(){
+  const msg=(state.chatInput||'').trim();
+  if(!msg||state.isAITyping) return;
+  const lang=getLang();
+  state.chatMessages=[...state.chatMessages,{type:'user',text:msg,time:timeNow()}];
+  state.chatInput=''; state.isAITyping=true; render();
+  setTimeout(()=>{
+    state.chatMessages=[...state.chatMessages,{type:'ai',text:getAIReply(msg,lang),time:timeNow()}];
+    state.isAITyping=false; render();
+  }, 1000+Math.random()*800);
+}
+
+// ═══════════════════ EVENTS (delegation) ═══════════════════
+document.addEventListener('click', e=>{
+  const nodeEl = e.target.closest('[data-node]');
+  if(nodeEl){ const id=nodeEl.dataset.node; state.selectedKgNode = state.selectedKgNode===id?null:id; render(); return; }
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const a = el.dataset.action;
+  switch(a){
+    case 'lang': state.lang=el.dataset.lang; render(); break;
+    case 'role': state.role=el.dataset.role; render(); break;
+    case 'login': if(state.role){ state.screen = state.role==='student'?'consent':'dashboard'; render(); } break;
+    case 'consentContinue': if(state.consentChecked){ state.screen='dashboard'; render(); } break;
+    case 'goBack': state.screen='login'; render(); break;
+    case 'vark': {
+      const tp=el.dataset.type; const na=[...state.varkAnswers,tp];
+      if(na.length>=VARK_QS.length){ state.varkAnswers=na; state.varkDone=true; }
+      else { state.varkAnswers=na; state.varkStep++; }
+      render(); break;
     }
-    ctx.fillStyle='#8a8a9e'; ctx.font='11px DM Sans'; ctx.textAlign='right';
-    ctx.fillText(item.label,pad.l-6,y+barH/2+4);
-    ctx.fillStyle=item.color; ctx.font='11px DM Sans'; ctx.textAlign='left';
-    ctx.fillText(Math.round(item.val/total*100)+'%',pad.l+bw+6,y+barH/2+4);
-  });
-}
-
-async function stAIAdvice(prefill) {
-  if(prefill) document.getElementById('st-question').value = prefill;
-  const q = document.getElementById('st-question').value.trim();
-  if(!q) return alert('Savol yozing');
-
-  const d = screenTimeData[currentSTStudent];
-  const platforms = d.platforms.map(p=>`${p.name}(${(p.mins/60).toFixed(1)}h,${p.cat})`).join(', ');
-
-  showLoading('Ekran vaqti tahlil qilinmoqda...');
-  const prompt = `Sen maktab o'qituvchisiga yordam beruvchi AI assistantsan. O'zbek tilida amaliy maslahat ber.
-
-O'quvchi: ${currentSTStudent}
-Bugungi ekran vaqti: ${d.total}h
-Platformalar: ${platforms}
-SDL darajasi: ${students.find(s=>s.name===currentSTStudent)?.sdl||70}%
-
-O'qituvchining savoli: ${q}
-
-Connectivism va SDL nazariyasi asosida, 3-4 paragrafda:
-1. Muammoni sharhlash (ekran vaqti o'rganishga qanday ta'sir qilmoqda)
-2. Chalg'ituvchi vaqtni o'quv faoliyatiga aylantirish usullari
-3. O'quvchi uchun konkret haftalik reja
-4. O'qituvchi va ota-ona uchun amaliy qadamlar`;
-
-  try {
-    const res = await callClaude(prompt);
-    document.getElementById('st-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')}</p></div>`;
-  } catch(e) {
-    document.getElementById('st-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik yuz berdi</p></div>`;
+    case 'varkContinue': state.screen='dashboard'; render(); break;
+    case 'nav': state.screen=el.dataset.screen; render(); break;
+    case 'logout': Object.assign(state,{screen:'login',role:null,consentChecked:false,varkStep:0,varkAnswers:[],varkDone:false,selectedKgNode:null}); render(); break;
+    case 'chatSend': sendChat(); break;
+    case 'suggest': state.chatInput=el.dataset.label; sendChat(); break;
   }
-  hideLoading();
-}
+});
 
-// patch renderDonut to also render limits
-const _origRenderPD = window.renderPlatformDetail;
-window.addEventListener('load', () => {
-  renderSources();
-  renderSDLWeek();
-  renderSDLDimensions();
-  renderStudents();
-  renderScreenTime();
-  setTimeout(() => {
-    drawSDLChart();
-    drawMiniGraph();
-  }, 200);
+document.addEventListener('change', e=>{
+  if(e.target.dataset.action==='consentToggle'){ state.consentChecked=e.target.checked; render(); }
 });
-window.addEventListener('resize', () => {
-  drawSDLChart();
-  drawMiniGraph();
+
+document.addEventListener('input', e=>{
+  const a=e.target.dataset.action;
+  if(a==='email'){ state.email=e.target.value; const b=document.getElementById('login-btn'); if(b) b.style.opacity=(state.role&&state.email)?'1':'0.5'; }
+  else if(a==='password'){ state.password=e.target.value; }
+  else if(a==='chat'){ state.chatInput=e.target.value; const b=document.getElementById('send-btn'); if(b) b.style.opacity=state.chatInput.trim()?'1':'0.4'; e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'; }
 });
+
+document.addEventListener('keydown', e=>{
+  if(e.target.dataset.action==='chat' && e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
+});
+
+render();
 </script>
 </body>
 </html>

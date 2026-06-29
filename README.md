@@ -37,12 +37,31 @@ ota-onaga ko'rsatib beradi.
 | **O'qituvchi paneli** | Guruh holati, har bir o'quvchi SDL darajasi |
 | **Ekran vaqti** | Platformalar bo'yicha vaqt, limitlar, ogohlantirishlar, heatmap |
 
+## Bo'limlar (yangi dizayn)
+
+| Bo'lim | Tavsifi |
+|--------|---------|
+| **Kirish** | Email/parol + rol tanlash (Talaba / O'qituvchi / Ota-ona), 3 til (UZ/RU/EN) |
+| **Rozilik** | Talaba ekran vaqti nazoratiga rasman rozilik beradi |
+| **VARK Testi** | 6 savollik o'rganuvchi tipi testi (Vizual/Audial/O'qish/Amaliy) |
+| **Dashboard** | Haftalik o'qish, top ilovalar, SDL gauge, AI tavsiya, maqsadlar |
+| **SDL Grafigi** | 8 haftalik SDL chizig'i va batafsil jadval |
+| **AI Yordamchi** | To'liq chat oynasi (UZ/RU/EN) |
+| **Bilim Tarmog'i** | Tugunlar va bog'lanishlar grafigi, tugun tafsilotlari |
+| **O'qituvchi Paneli** | Guruh statistikasi, o'quvchilar ro'yxati, xavf darajasi |
+| **Ekran Vaqti** | Ilovalar tahlili, foydali/chalg'ituvchi taqsimot (donut) |
+
 ## Texnologiya
 
-Hozircha bitta faylli prototip (`index.html`):
-- Sof HTML + CSS + JavaScript (framework yo'q)
-- Grafiklar uchun Canvas va SVG (`d3.js` ulangan)
-- AI javoblari uchun Claude API (`claude-sonnet-4`)
+Hozircha bitta faylli ilova (`index.html`):
+- Sof HTML + CSS + JavaScript (framework yo'q, tashqi kutubxona kerak emas)
+- Grafiklar to'liq SVG bilan chiziladi (bar, gauge, line, donut, knowledge graph)
+- 3 tilli interfeys (UZ / RU / EN)
+- AI javoblari hozircha soxta (mock) — backend ulanganda Claude API'ga o'tadi
+
+> **Backend qo'llanmasi:** Frontend va backend qanday bo'linishi, qaysi API
+> endpointlar kerakligi [`FRONTEND_BACKEND.md`](./FRONTEND_BACKEND.md) faylida
+> batafsil yozilgan.
 
 ## Ishga tushirish
 
