@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLN — Personal Learning Network</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Serif+Display:ital@0;1&display=swap');
+
+  :root {
+    --bg: #0e0f14;
+    --bg2: #15161e;
+    --bg3: #1c1d28;
+    --bg4: #242535;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8e8f0;
+    --muted: #8a8a9e;
+    --dim: #4a4a62;
+    --accent: #7c6ef5;
+    --accent2: #5b50cc;
+    --green: #3ecf8e;
+    --amber: #f5a623;
+    --coral: #ff6b6b;
+    --teal: #38bdf8;
+    --purple: #c084fc;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* LAYOUT */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+  }
+
+  .logo {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-item.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(124,110,245,0.08);
+  }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: white; flex-shrink: 0;
+  }
+  .user-name { font-size: 13px; font-weight: 500; }
+  .user-level { font-size: 11px; color: var(--green); }
+
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  /* TOP BAR */
+  .topbar {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-title { font-size: 16px; font-weight: 500; flex: 1; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-purple { background: rgba(192,132,252,0.15); color: var(--purple); }
+  .badge-green { background: rgba(62,207,142,0.15); color: var(--green); }
+  .badge-amber { background: rgba(245,166,35,0.15); color: var(--amber); }
+  .badge-teal { background: rgba(56,189,248,0.15); color: var(--teal); }
+
+  /* CONTENT */
+  .content { padding: 24px 28px; flex: 1; }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* DASHBOARD */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .stat-val { font-size: 26px; font-weight: 600; line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .stat-trend { font-size: 12px; margin-top: 4px; }
+  .up { color: var(--green); }
+  .down { color: var(--coral); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+
+  /* LEARNER TYPE */
+  .learner-type-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .learner-type-icon { font-size: 22px; }
+  .learner-type-name { font-size: 14px; font-weight: 500; }
+  .learner-type-desc { font-size: 12px; color: var(--muted); }
+  .progress-bar-wrap { flex: 1; }
+  .progress-bar {
+    height: 6px;
+    background: var(--bg4);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  /* NODE GRAPH */
+  #node-graph { width: 100%; height: 280px; }
+  .node-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* SOURCES / ADD */
+  .source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .source-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .source-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .source-card.selected { border-color: var(--accent); background: rgba(124,110,245,0.06); }
+  .source-type { font-size: 11px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .source-title { font-size: 14px; font-weight: 500; margin-bottom: 6px; line-height: 1.3; }
+  .source-meta { font-size: 12px; color: var(--muted); }
+  .source-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+
+  /* FORM */
+  .form-group { margin-bottom: 16px; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+  input, textarea, select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  select option { background: var(--bg3); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* AI INSIGHT BOX */
+  .ai-insight {
+    background: linear-gradient(135deg, rgba(124,110,245,0.1), rgba(192,132,252,0.06));
+    border: 1px solid rgba(124,110,245,0.25);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .ai-insight-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .ai-badge { background: var(--accent); color: white; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .ai-text { font-size: 14px; line-height: 1.6; color: var(--text); }
+
+  /* SDL TRACKER */
+  .sdl-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 20px; }
+  .day-cell {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    font-size: 10px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    border: 1px solid var(--border);
+  }
+  .day-cell:hover { transform: scale(1.1); }
+  .day-label { color: var(--muted); margin-bottom: 4px; font-size: 9px; }
+  .day-score { font-weight: 600; font-size: 13px; }
+
+  /* TEACHER DASHBOARD */
+  .student-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .student-row:hover { background: rgba(255,255,255,0.03); }
+  .student-name { font-size: 14px; font-weight: 500; flex: 1; }
+  .student-level { font-size: 12px; color: var(--muted); }
+  .mini-bar {
+    width: 80px;
+    height: 4px;
+    background: var(--bg4);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .mini-fill { height: 100%; border-radius: 2px; }
+
+  /* LOADING */
+  .loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(14,15,20,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+  .loading-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 40px;
+    text-align: center;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: var(--muted); }
+
+  /* RESPONSE */
+  .response-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 16px;
+  }
+  .response-card p { font-size: 14px; line-height: 1.7; color: var(--text); margin-bottom: 10px; }
+  .response-card p:last-child { margin-bottom: 0; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+  /* TOOLTIP */
+  .tooltip {
+    position: absolute;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 50;
+    max-width: 200px;
+    line-height: 1.4;
+  }
+
+  /* SCREEN TIME */
+  .app-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .risk-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .alert-banner {
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .alert-red { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.25); }
+  .alert-amber { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.25); }
+  .alert-green { background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.25); }
+  .donut-wrap { position: relative; width: 120px; height: 120px; flex-shrink:0; }
+  .donut-label {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 600;
+    line-height: 1.1;
+  }
+  .donut-sub { font-size: 10px; color: var(--muted); }
+  .time-heatmap { display: grid; grid-template-columns: repeat(24,1fr); gap: 2px; }
+  .heat-cell {
+    height: 20px; border-radius: 2px;
+    transition: opacity 0.2s;
+  }
+  .heat-cell:hover { opacity: 0.7; }
+  .student-tab {
+    padding: 6px 14px; border-radius: 20px; font-size: 12px;
+    cursor: pointer; border: 1px solid var(--border);
+    color: var(--muted); transition: all 0.15s; white-space: nowrap;
+  }
+  .student-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .student-tab:hover:not(.active) { border-color: var(--border2); color: var(--text); }
+  .platform-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    transition: background 0.15s; cursor: default;
+  }
+  .platform-row:hover { background: rgba(255,255,255,0.03); }
+  .limit-input {
+    width: 60px; padding: 4px 8px; font-size: 12px;
+    text-align: center; border-radius: 6px;
+  }
+
+  .sep { height: 1px; background: var(--border); margin: 20px 0; }
+  .flex { display: flex; }
+  .gap-8 { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-20 { margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading-overlay" style="display:none">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">AI tahlil qilmoqda...</div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-title">PLN</div>
+      <div class="logo-sub">Personal Learning Network</div>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showView('dashboard')">
+        <span class="nav-icon">◉</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showView('sources')">
+        <span class="nav-icon">◈</span> Manbalar
+      </div>
+      <div class="nav-item" onclick="showView('network')">
+        <span class="nav-icon">◎</span> Bilim tarmog'i
+      </div>
+      <div class="nav-item" onclick="showView('sdl')">
+        <span class="nav-icon">◐</span> SDL Tracker
+      </div>
+      <div class="nav-item" onclick="showView('ai')">
+        <span class="nav-icon">✦</span> AI Tavsiya
+      </div>
+      <div class="nav-item" onclick="showView('teacher')">
+        <span class="nav-icon">◧</span> O'qituvchi
+      </div>
+      <div class="nav-item" onclick="showView('screentime')">
+        <span class="nav-icon">⏱</span> Ekran vaqti
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar">OA</div>
+        <div>
+          <div class="user-name">O'quvchi</div>
+          <div class="user-level">B2 darajasi</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view active">
+      <div class="topbar">
+        <span class="topbar-title">Umumiy ko'rinish</span>
+        <span class="badge badge-green">✦ SDL Score: 82</span>
+        <span class="badge badge-purple">Visual Learner</span>
+      </div>
+      <div class="content">
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Nodes</div>
+            <div class="stat-val" style="color:var(--accent)">24</div>
+            <div class="stat-sub">Bilim tugunlari</div>
+            <div class="stat-trend up">↑ +3 bu hafta</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Manbalar</div>
+            <div class="stat-val" style="color:var(--teal)">47</div>
+            <div class="stat-sub">Jami resurslar</div>
+            <div class="stat-trend up">↑ +8 bu oy</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">O'rganish vaqti</div>
+            <div class="stat-val" style="color:var(--green)">142h</div>
+            <div class="stat-sub">Jami soatlar</div>
+            <div class="stat-trend up">↑ 4.2h/kun</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">SDL Competency</div>
+            <div class="stat-val" style="color:var(--amber)">82%</div>
+            <div class="stat-sub">O'z-o'zini boshqarish</div>
+            <div class="stat-trend up">↑ +12% oyda</div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">O'rganish uslubi tahlili</div>
+            <div>
+              <div class="learner-type-row">
+                <span class="learner-type-icon">👁</span>
+                <div style="flex:1">
+                  <div class="learner-type-name">Visual</div>
+                  <div class="learner-type-desc">Video, infografika</div>
+                </div>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar"><div class="progress-fill" style="width:78%;background:var(--accent)"></div></div>
+                </div>
+                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">78%</span>
+              </div>
+              <div class="learner-type-row">
+                <span class="learner-type-icon">👂</span>
+                <div style="flex:1">
+                  <div class="learner-type-name">Auditory</div>
+                  <div class="learner-type-desc">Podcast, audio</div>
+                </div>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar"><div class="progress-fill" style="width:55%;background:var(--teal)"></div></div>
+                </div>
+                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">55%</span>
+              </div>
+              <div class="learner-type-row">
+                <span class="learner-type-icon">📖</span>
+                <div style="flex:1">
+                  <div class="learner-type-name">Reading</div>
+                  <div class="learner-type-desc">Maqola, kitob</div>
+                </div>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar"><div class="progress-fill" style="width:42%;background:var(--green)"></div></div>
+                </div>
+                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">42%</span>
+              </div>
+              <div class="learner-type-row">
+                <span class="learner-type-icon">🤝</span>
+                <div style="flex:1">
+                  <div class="learner-type-name">Kinesthetic</div>
+                  <div class="learner-type-desc">Amaliyot, mashq</div>
+                </div>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar"><div class="progress-fill" style="width:65%;background:var(--amber)"></div></div>
+                </div>
+                <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">65%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">SDL Kompetensiya o'sishi</div>
+            <canvas id="sdl-chart" height="160"></canvas>
+          </div>
+        </div>
+
+        <div class="ai-insight">
+          <div class="ai-insight-header">
+            <span class="ai-badge">✦ AI Tahlil</span>
+            <span style="font-size:12px;color:var(--muted)">Connectivism asosida</span>
+          </div>
+          <div class="ai-text" id="ai-dashboard-insight">
+            Siz <strong>Visual Learner</strong> siz — video va vizual manbalar orqali 78% samaraliroq o'rganyapsiz. 
+            Bu hafta "Grammar" va "Speaking" nodelari orasidagi bog'lanish kuchaydi. 
+            Tavsiya: Ingliz tilida <strong>YouTube explanations</strong> ni ko'proq ulang, so'ngra amaliyot (kinesthetic) bilan mustahkamlang. 
+            SDL skoringiz o'sib bormoqda — maqsad qo'yish va o'z-o'zini baholash ko'nikmalaringiz yaxshilanmoqda.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Bilim tarmog'i (preview)</div>
+          <svg id="mini-graph" width="100%" height="200"></svg>
+          <div style="margin-top:10px;text-align:center">
+            <button class="btn btn-ghost btn-sm" onclick="showView('network')">To'liq ko'rish →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOURCES -->
+    <div id="view-sources" class="view">
+      <div class="topbar">
+        <span class="topbar-title">Manbalar</span>
+        <button class="btn btn-primary btn-sm" onclick="showAddSource()">+ Manba qo'shish</button>
+      </div>
+      <div class="content">
+
+        <div id="add-source-form" style="display:none" class="card mb-20">
+          <div class="card-title">Yangi manba qo'shish</div>
+          <div class="two-col" style="gap:12px;margin-bottom:12px">
+            <div class="form-group" style="margin:0">
+              <label>Sarlavha</label>
+              <input type="text" id="src-title" placeholder="Manba nomi...">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Tur</label>
+              <select id="src-type">
+                <option value="youtube">📹 YouTube Video</option>
+                <option value="podcast">🎙 Podcast</option>
+                <option value="article">📄 Maqola</option>
+                <option value="book">📚 Kitob</option>
+                <option value="course">🎓 Kurs</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>URL yoki tavsif</label>
+            <input type="text" id="src-url" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>Qaysi node bilan bog'liq?</label>
+            <input type="text" id="src-node" placeholder="Grammar, Speaking, Vocabulary...">
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" onclick="analyzeSource()">✦ AI tahlil qil va qo'sh</button>
+            <button class="btn btn-ghost" onclick="hideAddSource()">Bekor</button>
+          </div>
+          <div id="source-ai-response"></div>
+        </div>
+
+        <div class="source-grid" id="source-list"></div>
+      </div>
+    </div>
+
+    <!-- NETWORK -->
+    <div id="view-network" class="view">
+      <div class="topbar">
+        <span class="topbar-title">Bilim tarmog'i vizualizatsiyasi</span>
+        <span class="badge badge-teal">Connectivism modeli</span>
+      </div>
+      <div class="content">
+        <div class="card mb-20" style="padding:0;overflow:hidden">
+          <div id="full-graph" style="height:420px;position:relative">
+            <svg id="network-svg" width="100%" height="420"></svg>
+            <div id="node-tooltip" class="tooltip" style="display:none"></div>
+          </div>
+          <div style="padding:16px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+            <div class="node-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Grammatika</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Leksika</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>Speaking</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Listening</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--coral)"></div>Writing</div>
+            </div>
+            <div style="margin-left:auto;font-size:12px;color:var(--muted)">
+              Tugun o'lcham = o'rganish chuqurligi · Chiziq qalinligi = bog'lanish kuchi
+            </div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">Kuchli bog'lanishlar</div>
+            <div id="strong-connections"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Zaif bog'lanishlar (rivojlantirish kerak)</div>
+            <div id="weak-connections"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SDL TRACKER -->
+    <div id="view-sdl" class="view">
+      <div class="topbar">
+        <span class="topbar-title">SDL Tracker — O'z-o'zini boshqarish</span>
+        <span class="badge badge-green">Haftalik maqsad: 80%</span>
+      </div>
+      <div class="content">
+
+        <div class="two-col mb-20">
+          <div class="card">
+            <div class="card-title">Bu haftaning SDL faolligi</div>
+            <div class="sdl-week" id="sdl-week"></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+              <span>Kam</span><span>Ko'p</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Bugun nima o'rgandim?</div>
+            <div class="form-group">
+              <label>O'rganilgan mavzu</label>
+              <input type="text" id="sdl-topic" placeholder="Masalan: Present Perfect tense...">
+            </div>
+            <div class="form-group">
+              <label>Qayerdan o'rgandim?</label>
+              <select id="sdl-source">
+                <option>YouTube video</option>
+                <option>Podcast</option>
+                <option>Kitob/Maqola</option>
+                <option>O'qituvchi</option>
+                <option>Tengdoshdan</option>
+                <option>Amaliyot</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>O'z-o'zimni baholash (1-10)</label>
+              <input type="range" min="1" max="10" value="7" id="sdl-rating" oninput="document.getElementById('sdl-rating-val').textContent=this.value">
+              <div style="text-align:right;font-size:12px;color:var(--muted);margin-top:4px">Daraja: <span id="sdl-rating-val">7</span>/10</div>
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="logSDL()">✦ AI bilan tahlil qil va yozib ol</button>
+            <div id="sdl-ai-response"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">SDL Kompetensiya o'lchovlari (Zimmerman modeli)</div>
+          <div id="sdl-dimensions"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI TAVSIYANOMA -->
+    <div id="view-ai" class="view">
+      <div class="topbar">
+        <span class="topbar-title">AI Tavsiya — Shaxsiy yo'l xaritasi</span>
+        <span class="badge badge-purple">✦ Claude AI</span>
+      </div>
+      <div class="content">
+        <div class="card mb-20">
+          <div class="card-title">Savolingizni yozing</div>
+          <div class="form-group">
+            <label>Darajangiz</label>
+            <select id="ai-level">
+              <option>A1 — Boshlang'ich</option>
+              <option>A2 — Elementar</option>
+              <option>B1 — O'rta</option>
+              <option selected>B2 — O'rta-yuqori</option>
+              <option>C1 — Ilg'or</option>
+              <option>C2 — Professional</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Maqsadingiz yoki savolingiz</label>
+            <textarea id="ai-question" placeholder="Masalan: Ingliz tilida business speaking'ni yaxshilashim kerak, qanday yo'l tutaman? Yoki: listening uchun eng yaxshi podcast dasturlari qaysilar?"></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="getAIAdvice()">✦ AI tavsiya olish</button>
+          <div id="ai-advice-response"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Tez savollar</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="quickAsk('Mening visual learner ekanligimga mos video manbalar tavsiya ber')">📹 Visual manbalar</button>
+            <button class="btn btn-ghost btn-sm" onclick="quickAsk('SDL competency oshirish uchun haftalik reja tuz')">📅 Haftalik reja</button>
+            <button class="btn btn-ghost btn-sm" onclick="quickAsk('Grammar va Speaking nodalarini bog\'lash uchun connectivist yondashuv')">🔗 Nodes bog'lash</button>
+            <button class="btn btn-ghost btn-sm" onclick="quickAsk('B2 darajasida ingliz tilini mustaqil o\'rganish strategiyasi')">🎯 Strategiya</button>
+            <button class="btn btn-ghost btn-sm" onclick="quickAsk('Ingliz tilida speaking qo\'rquvini yengish yo\'llari')">💬 Speaking tips</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEACHER DASHBOARD -->
+    <div id="view-teacher" class="view">
+      <div class="topbar">
+        <span class="topbar-title">O'qituvchi paneli</span>
+        <span class="badge badge-amber">5 ta o'quvchi</span>
+      </div>
+      <div class="content">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">O'rtacha SDL</div>
+            <div class="stat-val" style="color:var(--green)">74%</div>
+            <div class="stat-trend up">↑ Guruh o'sishi</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Aktiv o'quvchilar</div>
+            <div class="stat-val" style="color:var(--teal)">4/5</div>
+            <div class="stat-trend">Bu hafta</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Jami nodes</div>
+            <div class="stat-val" style="color:var(--accent)">118</div>
+            <div class="stat-trend up">↑ Guruh bilimi</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Zaif bo'linma</div>
+            <div class="stat-val" style="color:var(--coral)">Writing</div>
+            <div class="stat-trend down">↓ Guruh muammosi</div>
+          </div>
+        </div>
+
+        <div class="card mb-20">
+          <div class="card-title">O'quvchilar SDL holati</div>
+          <div id="students-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">✦ AI — Guruh uchun tavsiya</div>
+          <textarea id="teacher-question" placeholder="Guruh haqida savol yozing..." style="margin-bottom:12px"></textarea>
+          <button class="btn btn-primary" onclick="getTeacherAdvice()">✦ Tavsiya olish</button>
+          <div id="teacher-ai-response"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN TIME MONITOR -->
+    <div id="view-screentime" class="view">
+      <div class="topbar">
+        <span class="topbar-title">Ekran vaqti nazorati</span>
+        <span class="badge badge-amber">⚠ 3 ta ogohlantirish</span>
+        <span class="badge badge-teal">Bugun</span>
+      </div>
+      <div class="content">
+
+        <!-- ALERTS -->
+        <div id="st-alerts"></div>
+
+        <!-- SUMMARY STATS -->
+        <div class="stats-grid" style="margin-bottom:20px">
+          <div class="stat-card">
+            <div class="stat-label">O'rtacha ekran vaqti</div>
+            <div class="stat-val" style="color:var(--coral)">5.8h</div>
+            <div class="stat-sub">Bugun (guruh)</div>
+            <div class="stat-trend down">↑ Norma: 2h</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">O'rganish vs Chalg'itish</div>
+            <div class="stat-val" style="color:var(--amber)">28%</div>
+            <div class="stat-sub">Foydali vaqt ulushi</div>
+            <div class="stat-trend down">↓ Maqsad: 60%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Eng ko'p ishlatilgan</div>
+            <div class="stat-val" style="color:var(--coral); font-size:18px">TikTok</div>
+            <div class="stat-sub">Guruhda</div>
+            <div class="stat-trend down">↓ 2.1h/kun o'rtacha</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Xavfli o'quvchilar</div>
+            <div class="stat-val" style="color:var(--coral)">3/5</div>
+            <div class="stat-sub">Limitdan oshgan</div>
+            <div class="stat-trend down">↓ Diqqat kerak</div>
+          </div>
+        </div>
+
+        <!-- STUDENT TABS + DETAIL -->
+        <div class="card mb-20">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <div class="card-title" style="margin:0">O'quvchi tanlang</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap" id="st-tabs"></div>
+          </div>
+
+          <!-- DONUT + TOP APPS -->
+          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px">
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center">Vaqt taqsimoti</div>
+              <div class="donut-wrap">
+                <canvas id="donut-canvas" width="120" height="120"></canvas>
+                <div class="donut-label">
+                  <span id="donut-total">—</span>
+                  <span class="donut-sub">soat/kun</span>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Platforma tafsiloti</div>
+              <div id="platform-detail"></div>
+            </div>
+            <div style="min-width:200px">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Vaqt chegaralari (soat)</div>
+              <div id="limit-controls"></div>
+            </div>
+          </div>
+
+          <!-- HEATMAP -->
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">24 soatlik faollik xaritasi (qizil = chalg'ituvchi, yashil = foydali)</div>
+            <div class="time-heatmap" id="st-heatmap"></div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:4px">
+              <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- WEEKLY TREND -->
+        <div class="two-col" style="margin-bottom:20px">
+          <div class="card">
+            <div class="card-title">Haftalik ekran vaqti trendi</div>
+            <canvas id="st-week-chart" height="140"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-title">Foydali vs Befoyda vaqt</div>
+            <canvas id="st-ratio-chart" height="140"></canvas>
+          </div>
+        </div>
+
+        <!-- AI RECOMMENDATION -->
+        <div class="card">
+          <div class="card-title">✦ AI — Ekran vaqti bo'yicha tavsiya</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn btn-ghost btn-sm" onclick="stAIAdvice('Ekran vaqtini ko\'p sarflayotgan o\'quvchilar uchun chalg\'itishni kamaytirish strategiyasi ber')">📉 Kamaytirish strategiyasi</button>
+            <button class="btn btn-ghost btn-sm" onclick="stAIAdvice('TikTok va Instagram vaqtini ingliz tili o\'rganishga yo\'naltirish yo\'llari')">🔄 Qayta yo\'naltirish</button>
+            <button class="btn btn-ghost btn-sm" onclick="stAIAdvice('Ota-onalar bilan hamkorlik: o\'quvchi ekran vaqtini nazorat qilish')">👨‍👩‍👧 Ota-ona bilan</button>
+          </div>
+          <textarea id="st-question" placeholder="O'quvchi ekran vaqti haqida savol yozing..." style="margin-bottom:12px"></textarea>
+          <button class="btn btn-primary" onclick="stAIAdvice()">✦ Tavsiya olish</button>
+          <div id="st-ai-response"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ───── DATA ─────
+const sources = [
+  { id:1, title:"BBC Learning English — 6 Minute English", type:"youtube", url:"https://youtube.com", node:"Listening", tags:["intermediate","authentic","british"], level:"B1-B2", score:92 },
+  { id:2, title:"English Grammar in Use — Raymond Murphy", type:"book", url:"", node:"Grammar", tags:["reference","rules","exercises"], level:"A2-B2", score:88 },
+  { id:3, title:"TED Talks — Ideas Worth Spreading", type:"youtube", url:"https://ted.com", node:"Speaking", tags:["advanced","inspiration","visual"], level:"B2-C1", score:85 },
+  { id:4, title:"All Ears English Podcast", type:"podcast", url:"", node:"Listening", tags:["american","conversational","idioms"], level:"B1-C1", score:90 },
+  { id:5, title:"Cambridge English Vocabulary in Use", type:"book", url:"", node:"Vocabulary", tags:["academic","collocations","reference"], level:"B2-C1", score:87 },
+  { id:6, title:"Write & Improve by Cambridge", type:"course", url:"https://writeandimprove.com", node:"Writing", tags:["AI feedback","IELTS","structured"], level:"A2-C1", score:83 },
+];
+
+const nodes = [
+  { id:"Grammar", group:1, size:30, connections:8, desc:"Tense, Modal verbs, Conditional" },
+  { id:"Vocabulary", group:2, size:26, connections:7, desc:"Collocations, Idioms, Word forms" },
+  { id:"Speaking", group:3, size:28, connections:6, desc:"Fluency, Pronunciation, Discourse" },
+  { id:"Listening", group:4, size:24, connections:5, desc:"Comprehension, Note-taking" },
+  { id:"Writing", group:5, size:20, connections:4, desc:"Academic, Business, Creative" },
+  { id:"Reading", group:2, size:22, connections:5, desc:"Skimming, Scanning, Critical" },
+  { id:"Pragmatics", group:3, size:16, connections:3, desc:"Register, Context, Culture" },
+  { id:"Phonology", group:3, size:14, connections:3, desc:"Sounds, Stress, Intonation" },
+];
+
+const links = [
+  { source:"Grammar", target:"Speaking", strength:0.9 },
+  { source:"Grammar", target:"Writing", strength:0.85 },
+  { source:"Vocabulary", target:"Speaking", strength:0.8 },
+  { source:"Vocabulary", target:"Reading", strength:0.75 },
+  { source:"Listening", target:"Speaking", strength:0.7 },
+  { source:"Writing", target:"Reading", strength:0.65 },
+  { source:"Grammar", target:"Reading", strength:0.6 },
+  { source:"Phonology", target:"Speaking", strength:0.55 },
+  { source:"Pragmatics", target:"Speaking", strength:0.5 },
+  { source:"Phonology", target:"Listening", strength:0.45 },
+  { source:"Vocabulary", target:"Writing", strength:0.6 },
+  { source:"Pragmatics", target:"Writing", strength:0.3 },
+];
+
+const students = [
+  { name:"Aziza Karimova", level:"B2", sdl:88, nodes:28, weak:"Phonology", trend:"up" },
+  { name:"Jasur Toshmatov", level:"B1", sdl:71, nodes:19, weak:"Writing", trend:"up" },
+  { name:"Nilufar Yusupova", level:"A2", sdl:65, nodes:14, weak:"Grammar", trend:"down" },
+  { name:"Sardor Abdullayev", level:"B2", sdl:79, nodes:22, weak:"Pragmatics", trend:"up" },
+  { name:"Dilnoza Rашидova", level:"B1", sdl:68, nodes:17, weak:"Speaking", trend:"up" },
+];
+
+const nodeColors = { 1:"#7c6ef5", 2:"#3ecf8e", 3:"#38bdf8", 4:"#f5a623", 5:"#ff6b6b" };
+
+// ───── NAVIGATION ─────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  const labels = {dashboard:'dashboard',sources:'manba',network:'bilim',sdl:'sdl',ai:'tavsiya',teacher:"o'qituvchi",screentime:'ekran'};
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if(n.textContent.trim().toLowerCase().includes(labels[name]||name)) n.classList.add('active');
+  });
+  if(name === 'network') setTimeout(drawFullGraph, 100);
+  if(name === 'dashboard') setTimeout(drawMiniGraph, 100);
+  if(name === 'screentime') setTimeout(()=>{ renderSTCharts(screenTimeData[currentSTStudent]); }, 100);
+}
+
+// ───── RENDER SOURCES ─────
+function renderSources() {
+  const typeIcon = {youtube:'📹',podcast:'🎙',article:'📄',book:'📚',course:'🎓'};
+  document.getElementById('source-list').innerHTML = sources.map(s => `
+    <div class="source-card">
+      <div class="source-type">${typeIcon[s.type]||'📌'} ${s.type.toUpperCase()} &nbsp;·&nbsp; ${s.level}</div>
+      <div class="source-title">${s.title}</div>
+      <div class="source-meta">Node: <strong>${s.node}</strong> &nbsp;·&nbsp; AI Score: <strong style="color:var(--green)">${s.score}</strong></div>
+      <div class="source-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+// ───── ADD SOURCE ─────
+function showAddSource() { document.getElementById('add-source-form').style.display='block'; }
+function hideAddSource() { document.getElementById('add-source-form').style.display='none'; }
+
+async function analyzeSource() {
+  const title = document.getElementById('src-title').value.trim();
+  const type = document.getElementById('src-type').value;
+  const url = document.getElementById('src-url').value.trim();
+  const node = document.getElementById('src-node').value.trim();
+  if(!title) return alert('Sarlavha kiriting');
+
+  showLoading('AI manba tahlil qilmoqda...');
+  const prompt = `Sen connectivism nazariyasi asosida ingliz tili o'rganuvchilar uchun PLN platformasining AI assistantissan.
+
+Quyidagi manba haqida qisqacha tahlil ber (o'zbek tilida, 3-4 gap):
+- Sarlavha: ${title}
+- Tur: ${type}
+- Node: ${node}
+
+Tahlilda quyidagilarni qamra ol:
+1. Bu manba qaysi o'rganish uslubiga (visual/auditory/reading/kinesthetic) to'g'ri keladi
+2. SDL (self-directed learning) rivojlantirishga qanday hissa qo'shadi
+3. Connectivism nuqtai nazaridan boshqa qaysi nodeslar bilan bog'lanishi mumkin
+4. Qisqa AI sifat bahosi (1-100)
+
+Javobni oddiy paragraf shaklida ber.`;
+
+  try {
+    const res = await callClaude(prompt);
+    document.getElementById('source-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n/g,'</p><p>')}</p></div>`;
+    sources.push({ id: sources.length+1, title, type, url, node: node||'General', tags:[], level:'B1-B2', score: Math.floor(Math.random()*15)+80 });
+    renderSources();
+  } catch(e) {
+    document.getElementById('source-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik: ${e.message}</p></div>`;
+  }
+  hideLoading();
+}
+
+// ───── SDL LOG ─────
+async function logSDL() {
+  const topic = document.getElementById('sdl-topic').value.trim();
+  const source = document.getElementById('sdl-source').value;
+  const rating = document.getElementById('sdl-rating').value;
+  if(!topic) return alert('Mavzu kiriting');
+
+  showLoading('SDL tahlil qilinmoqda...');
+  const prompt = `Sen connectivism va SDL (self-directed learning) ekspertissan. O'zbek tilida qisqa tahlil ber (2-3 gap):
+
+O'quvchi bugun o'rgandi:
+- Mavzu: ${topic}
+- Manba: ${source}
+- O'z-o'zini baholash: ${rating}/10
+
+Quyidagilarni qamra ol:
+1. Bu o'rganish SDL kompetensiyasining qaysi dimensiyasini rivojlantiradi (maqsad qo'yish/monitoring/baholash)
+2. Connectivism nuqtai nazaridan bu bilimni qaysi node bilan bog'lash mumkin
+3. Ertangi kun uchun kichik tavsiya`;
+
+  try {
+    const res = await callClaude(prompt);
+    document.getElementById('sdl-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n/g,'</p><p>')}</p></div>`;
+  } catch(e) {
+    document.getElementById('sdl-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik yuz berdi</p></div>`;
+  }
+  hideLoading();
+}
+
+// ───── AI ADVICE ─────
+async function getAIAdvice() {
+  const level = document.getElementById('ai-level').value;
+  const question = document.getElementById('ai-question').value.trim();
+  if(!question) return alert('Savol yozing');
+
+  showLoading('AI shaxsiy tavsiya tayyorlamoqda...');
+  const prompt = `Sen connectivism nazariyasi va SDL (self-directed learning) asosida ingliz tilini o'rgatuvchi AI tavsiyachisan.
+
+O'quvchi darajasi: ${level}
+Savoli: ${question}
+
+O'zbek tilida, 4-5 paragrafda javob ber. Javobda:
+1. Connectivism nuqtai nazaridan yondoshuv (nodes, connections, networks)
+2. SDL kompetensiyasini rivojlantiruvchi amaliy qadamlar
+3. O'rganish uslubiga mos manbalar (visual/auditory/kinesthetic)
+4. Haftalik mini-reja (konkret, bajarilishi mumkin bo'lgan)
+
+Ilmiy asosga ega, ammo qulay tilda yoz.`;
+
+  try {
+    const res = await callClaude(prompt);
+    document.getElementById('ai-advice-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')}</p></div>`;
+  } catch(e) {
+    document.getElementById('ai-advice-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik: ${e.message}</p></div>`;
+  }
+  hideLoading();
+}
+
+async function quickAsk(q) {
+  document.getElementById('ai-question').value = q;
+  showView('ai');
+  await getAIAdvice();
+}
+
+// ───── TEACHER ADVICE ─────
+async function getTeacherAdvice() {
+  const q = document.getElementById('teacher-question').value.trim();
+  if(!q) return alert('Savol yozing');
+
+  showLoading("O'qituvchi uchun tahlil...");
+  const prompt = `Sen ingliz tili o'qituvchisiga yordam beruvchi AI assistantsan. Guruh ma'lumotlari:
+- 5 ta o'quvchi, o'rtacha SDL: 74%
+- Eng zaif soha: Writing
+- O'quvchilar: Aziza(B2,SDL88%), Jasur(B1,SDL71%), Nilufar(A2,SDL65%), Sardor(B2,SDL79%), Dilnoza(B1,SDL68%)
+
+O'qituvchining savoli: ${q}
+
+O'zbek tilida, connectivism va SDL nazariyasi asosida amaliy tavsiya ber. 3-4 paragraf.`;
+
+  try {
+    const res = await callClaude(prompt);
+    document.getElementById('teacher-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')}</p></div>`;
+  } catch(e) {
+    document.getElementById('teacher-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik yuz berdi</p></div>`;
+  }
+  hideLoading();
+}
+
+// ───── CLAUDE API ─────
+async function callClaude(prompt) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:1000,
+      messages:[{ role:"user", content: prompt }]
+    })
+  });
+  if(!res.ok) throw new Error(`API xatosi: ${res.status}`);
+  const data = await res.json();
+  return data.content?.[0]?.text || "Javob olinmadi";
+}
+
+// ───── LOADING ─────
+function showLoading(txt) {
+  document.getElementById('loading-text').textContent = txt || 'AI tahlil qilmoqda...';
+  document.getElementById('loading').style.display='flex';
+}
+function hideLoading() { document.getElementById('loading').style.display='none'; }
+
+// ───── CHARTS ─────
+function drawSDLChart() {
+  const canvas = document.getElementById('sdl-chart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth;
+  const h = canvas.height = 160;
+  const data = [45,52,58,63,67,71,74,78,80,82,85,82];
+  const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const pad = { t:20,r:20,b:30,l:40 };
+  const gw = w - pad.l - pad.r, gh = h - pad.t - pad.b;
+  ctx.clearRect(0,0,w,h);
+  const max=90,min=30;
+  const pts = data.map((v,i) => ({ x: pad.l + i*(gw/(data.length-1)), y: pad.t + gh - (v-min)/(max-min)*gh }));
+  // grid
+  for(let i=0;i<4;i++) {
+    const y = pad.t + i*(gh/3);
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+gw,y); ctx.stroke();
+  }
+  // area
+  const grad = ctx.createLinearGradient(0,pad.t,0,pad.t+gh);
+  grad.addColorStop(0,'rgba(124,110,245,0.3)'); grad.addColorStop(1,'rgba(124,110,245,0)');
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pad.t+gh);
+  pts.forEach(p => ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[pts.length-1].x, pad.t+gh);
+  ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  // line
+  ctx.beginPath(); pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle='#7c6ef5'; ctx.lineWidth=2; ctx.stroke();
+  // dots
+  pts.forEach((p,i) => {
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fillStyle='#7c6ef5'; ctx.fill();
+  });
+  // labels
+  ctx.fillStyle='#8a8a9e'; ctx.font='10px DM Sans'; ctx.textAlign='center';
+  labels.forEach((l,i) => ctx.fillText(l, pts[i].x, h-8));
+}
+
+function drawMiniGraph() {
+  const svg = document.getElementById('mini-graph');
+  if(!svg) return;
+  const w = svg.clientWidth||600, h=200;
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
+  svg.innerHTML='';
+  const positions = {
+    Grammar:{x:w*0.5,y:80}, Vocabulary:{x:w*0.25,y:60}, Speaking:{x:w*0.7,y:50},
+    Listening:{x:w*0.3,y:140}, Writing:{x:w*0.6,y:150}, Reading:{x:w*0.15,y:120},
+    Pragmatics:{x:w*0.8,y:130}, Phonology:{x:w*0.85,y:60}
+  };
+  links.forEach(l => {
+    const s=positions[l.source],t=positions[l.target];
+    if(!s||!t) return;
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',s.x); line.setAttribute('y1',s.y);
+    line.setAttribute('x2',t.x); line.setAttribute('y2',t.y);
+    line.setAttribute('stroke',`rgba(124,110,245,${l.strength*0.5})`);
+    line.setAttribute('stroke-width', l.strength*3);
+    svg.appendChild(line);
+  });
+  nodes.forEach(n => {
+    const p=positions[n.id]; if(!p) return;
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
+    c.setAttribute('r', n.size*0.7);
+    c.setAttribute('fill', nodeColors[n.group]||'#7c6ef5');
+    c.setAttribute('fill-opacity','0.85');
+    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',p.x); txt.setAttribute('y',p.y+18);
+    txt.setAttribute('text-anchor','middle'); txt.setAttribute('fill','#8a8a9e');
+    txt.setAttribute('font-size','10'); txt.textContent=n.id;
+    g.appendChild(c); g.appendChild(txt); svg.appendChild(g);
+  });
+}
+
+function drawFullGraph() {
+  const container = document.getElementById('full-graph');
+  const svg = document.getElementById('network-svg');
+  if(!svg||!container) return;
+  const w = container.clientWidth||700, h=420;
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
+  svg.innerHTML='';
+
+  const sim_nodes = nodes.map(n => ({...n}));
+  const sim_links = links.map(l => ({...l}));
+
+  const positions = {
+    Grammar:{x:w*0.5,y:h*0.4}, Vocabulary:{x:w*0.28,y:h*0.3}, Speaking:{x:w*0.68,y:h*0.25},
+    Listening:{x:w*0.32,y:h*0.65}, Writing:{x:w*0.62,y:h*0.7}, Reading:{x:w*0.15,y:h*0.5},
+    Pragmatics:{x:w*0.8,y:h*0.6}, Phonology:{x:w*0.78,y:h*0.22}
+  };
+
+  const tooltip = document.getElementById('node-tooltip');
+
+  sim_links.forEach(l => {
+    const s=positions[l.source],t=positions[l.target];
+    if(!s||!t) return;
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',s.x); line.setAttribute('y1',s.y);
+    line.setAttribute('x2',t.x); line.setAttribute('y2',t.y);
+    line.setAttribute('stroke',`rgba(124,110,245,${l.strength*0.6})`);
+    line.setAttribute('stroke-width', l.strength*4);
+    svg.appendChild(line);
+  });
+
+  nodes.forEach(n => {
+    const p=positions[n.id]; if(!p) return;
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor='pointer';
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r',n.size);
+    c.setAttribute('fill', nodeColors[n.group]||'#7c6ef5');
+    c.setAttribute('fill-opacity','0.9');
+    c.setAttribute('stroke','rgba(255,255,255,0.15)'); c.setAttribute('stroke-width','1.5');
+    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',p.x); txt.setAttribute('y',p.y+n.size+14);
+    txt.setAttribute('text-anchor','middle'); txt.setAttribute('fill','#8a8a9e');
+    txt.setAttribute('font-size','12'); txt.textContent=n.id;
+    const cnt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    cnt.setAttribute('x',p.x); cnt.setAttribute('y',p.y+4);
+    cnt.setAttribute('text-anchor','middle'); cnt.setAttribute('fill','white');
+    cnt.setAttribute('font-size','11'); cnt.setAttribute('font-weight','600');
+    cnt.textContent=n.connections;
+    g.addEventListener('mouseenter', e => {
+      c.setAttribute('fill-opacity','1');
+      c.setAttribute('r', n.size+3);
+      tooltip.style.display='block';
+      tooltip.style.left=(p.x+n.size+10)+'px';
+      tooltip.style.top=(p.y-20)+'px';
+      tooltip.innerHTML=`<strong>${n.id}</strong><br>${n.desc}<br><span style="color:var(--accent)">${n.connections} bog'lanish</span>`;
+    });
+    g.addEventListener('mouseleave', () => {
+      c.setAttribute('fill-opacity','0.9'); c.setAttribute('r',n.size);
+      tooltip.style.display='none';
+    });
+    g.appendChild(c); g.appendChild(txt); g.appendChild(cnt);
+    svg.appendChild(g);
+  });
+
+  // strong/weak connections
+  const strong = links.filter(l=>l.strength>0.7).sort((a,b)=>b.strength-a.strength);
+  const weak = links.filter(l=>l.strength<0.5).sort((a,b)=>a.strength-b.strength);
+
+  document.getElementById('strong-connections').innerHTML = strong.map(l=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${l.source} → ${l.target}</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <div class="mini-bar"><div class="mini-fill" style="width:${l.strength*100}%;background:var(--green)"></div></div>
+        <span style="font-size:12px;color:var(--green)">${Math.round(l.strength*100)}%</span>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('weak-connections').innerHTML = weak.map(l=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${l.source} → ${l.target}</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <div class="mini-bar"><div class="mini-fill" style="width:${l.strength*100}%;background:var(--coral)"></div></div>
+        <span style="font-size:12px;color:var(--coral)">${Math.round(l.strength*100)}%</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ───── SDL WEEK ─────
+function renderSDLWeek() {
+  const days=['Du','Se','Ch','Pa','Ju','Sh','Ya'];
+  const scores=[88,72,91,65,80,45,0];
+  const colors=['#3ecf8e','#7c6ef5','#3ecf8e','#f5a623','#38bdf8','#8a8a9e','#1c1d28'];
+  document.getElementById('sdl-week').innerHTML = days.map((d,i)=>`
+    <div class="day-cell" style="background:${scores[i]>0?colors[i]+'22':'var(--bg3)'}">
+      <div class="day-label">${d}</div>
+      <div class="day-score" style="color:${scores[i]>0?colors[i]:'var(--dim)'}">${scores[i]||'—'}</div>
+    </div>
+  `).join('');
+}
+
+function renderSDLDimensions() {
+  const dims=[
+    {name:'Maqsad qo\'yish',score:85,desc:'Haftalik maqsadlar belgilash',color:'var(--accent)'},
+    {name:'O\'z-o\'zini monitoring',score:78,desc:'Jarayonni kuzatish',color:'var(--teal)'},
+    {name:'Strategiya tanlash',score:72,desc:'O\'rganish usulini tanlash',color:'var(--green)'},
+    {name:'O\'z-o\'zini baholash',score:88,desc:'Natijalarni refleksiya qilish',color:'var(--amber)'},
+    {name:'Motivatsiya',score:80,desc:'Ichki va tashqi motivatsiya',color:'var(--purple)'},
+  ];
+  document.getElementById('sdl-dimensions').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">` +
+    dims.map(d=>`
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:500">${d.name}</span>
+          <span style="font-size:13px;color:${d.color};font-weight:600">${d.score}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${d.score}%;background:${d.color}"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${d.desc}</div>
+      </div>
+    `).join('') + `</div>`;
+}
+
+function renderStudents() {
+  document.getElementById('students-list').innerHTML = students.map(s=>`
+    <div class="student-row">
+      <div class="avatar" style="width:32px;height:32px;font-size:11px">${s.name.split(' ').map(w=>w[0]).join('')}</div>
+      <div>
+        <div class="student-name">${s.name}</div>
+        <div class="student-level">${s.level} · Zaif: ${s.weak}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;color:var(--muted)">${s.nodes} nodes</span>
+        <div class="mini-bar" style="width:90px">
+          <div class="mini-fill" style="width:${s.sdl}%;background:${s.sdl>80?'var(--green)':s.sdl>70?'var(--amber)':'var(--coral)'}"></div>
+        </div>
+        <span style="font-size:13px;font-weight:600;min-width:36px;text-align:right;color:${s.sdl>80?'var(--green)':s.sdl>70?'var(--amber)':'var(--coral)'}">${s.sdl}%</span>
+        <span style="font-size:14px">${s.trend==='up'?'↑':'↓'}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ───── SCREEN TIME DATA ─────
+const screenTimeData = {
+  'Aziza Karimova': {
+    total: 4.2,
+    platforms: [
+      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:95, bg:'rgba(62,207,142,0.12)' },
+      { name:'BBC Learning', icon:'📚', cat:'foydali', color:'#38bdf8', mins:60, bg:'rgba(56,189,248,0.12)' },
+      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:72, bg:'rgba(245,166,35,0.12)' },
+      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:45, bg:'rgba(255,107,107,0.12)' },
+      { name:'Telegram', icon:'💬', cat:'neytral', color:'#8a8a9e', mins:38, bg:'rgba(138,138,158,0.12)' },
+    ],
+    heatmap: [0,0,0,0,0,0,1,2,3,4,3,2,5,4,3,2,4,5,6,5,4,3,2,1],
+    heatType: [0,0,0,0,0,0,1,1,1,1,1,2,0,0,0,2,0,0,0,0,0,2,2,0],
+    weekData: [3.8,4.1,4.5,3.9,4.2,5.1,4.8],
+    riskLevel: 'medium',
+    limits: { YouTube:3, Instagram:1, TikTok:0.5, Telegram:1, 'BBC Learning':4 },
+  },
+  'Jasur Toshmatov': {
+    total: 7.1,
+    platforms: [
+      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:185, bg:'rgba(255,107,107,0.12)' },
+      { name:'PUBG Mobile', icon:'🎮', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:120, bg:'rgba(255,107,107,0.12)' },
+      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:55, bg:'rgba(62,207,142,0.12)' },
+      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:48, bg:'rgba(245,166,35,0.12)' },
+      { name:'Duolingo', icon:'🦜', cat:'foydali', color:'#3ecf8e', mins:18, bg:'rgba(62,207,142,0.12)' },
+    ],
+    heatmap: [0,0,0,0,1,0,1,1,2,2,3,3,4,5,6,7,8,7,6,5,7,8,6,4],
+    heatType: [0,0,0,0,2,0,1,1,1,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0],
+    weekData: [5.2,6.8,7.1,6.5,7.8,8.2,7.1],
+    riskLevel: 'high',
+    limits: { TikTok:0.5, 'PUBG Mobile':1, YouTube:3, Instagram:1, Duolingo:4 },
+  },
+  'Nilufar Yusupova': {
+    total: 6.4,
+    platforms: [
+      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:155, bg:'rgba(245,166,35,0.12)' },
+      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:110, bg:'rgba(255,107,107,0.12)' },
+      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:65, bg:'rgba(62,207,142,0.12)' },
+      { name:'Spotify', icon:'🎵', cat:'foydali', color:'#38bdf8', mins:40, bg:'rgba(56,189,248,0.12)' },
+      { name:'Minecraft', icon:'🎮', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:30, bg:'rgba(255,107,107,0.12)' },
+    ],
+    heatmap: [0,0,0,0,0,0,1,1,2,3,3,4,5,4,3,4,5,6,5,6,5,4,3,1],
+    heatType: [0,0,0,0,0,0,1,1,1,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0],
+    weekData: [4.5,5.8,6.2,6.0,6.4,7.1,6.8],
+    riskLevel: 'high',
+    limits: { Instagram:1, TikTok:0.5, YouTube:3, Spotify:2, Minecraft:1 },
+  },
+  'Sardor Abdullayev': {
+    total: 3.5,
+    platforms: [
+      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:90, bg:'rgba(62,207,142,0.12)' },
+      { name:'Coursera', icon:'🎓', cat:'foydali', color:'#38bdf8', mins:60, bg:'rgba(56,189,248,0.12)' },
+      { name:'Telegram', icon:'💬', cat:'neytral', color:'#8a8a9e', mins:35, bg:'rgba(138,138,158,0.12)' },
+      { name:'Instagram', icon:'📸', cat:'chalg\'ituvchi', color:'#f5a623', mins:20, bg:'rgba(245,166,35,0.12)' },
+      { name:'Anki', icon:'🗂', cat:'foydali', color:'#3ecf8e', mins:5, bg:'rgba(62,207,142,0.12)' },
+    ],
+    heatmap: [0,0,0,0,0,0,1,2,3,4,3,2,3,4,3,2,3,4,3,2,2,1,1,0],
+    heatType: [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,0,0],
+    weekData: [3.2,3.4,3.6,3.3,3.5,4.1,3.8],
+    riskLevel: 'low',
+    limits: { YouTube:4, Coursera:4, Telegram:1.5, Instagram:1, Anki:4 },
+  },
+  'Dilnoza Rashidova': {
+    total: 5.3,
+    platforms: [
+      { name:'TikTok', icon:'🎵', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:130, bg:'rgba(255,107,107,0.12)' },
+      { name:'YouTube', icon:'📹', cat:'foydali', color:'#3ecf8e', mins:70, bg:'rgba(62,207,142,0.12)' },
+      { name:'VK', icon:'💬', cat:'chalg\'ituvchi', color:'#f5a623', mins:55, bg:'rgba(245,166,35,0.12)' },
+      { name:'BBC Learning', icon:'📚', cat:'foydali', color:'#38bdf8', mins:45, bg:'rgba(56,189,248,0.12)' },
+      { name:'Roblox', icon:'🎮', cat:'chalg\'ituvchi', color:'#ff6b6b', mins:18, bg:'rgba(255,107,107,0.12)' },
+    ],
+    heatmap: [0,0,0,0,0,0,1,2,3,3,2,3,4,4,3,3,5,6,5,4,4,3,2,1],
+    heatType: [0,0,0,0,0,0,1,1,1,1,1,2,0,0,0,2,0,0,0,0,0,0,0,0],
+    weekData: [4.2,5.0,5.3,4.8,5.3,6.2,5.8],
+    riskLevel: 'medium',
+    limits: { TikTok:0.5, YouTube:3, VK:1, 'BBC Learning':4, Roblox:0.5 },
+  },
+};
+
+let currentSTStudent = 'Aziza Karimova';
+
+function renderScreenTime() {
+  // tabs
+  document.getElementById('st-tabs').innerHTML = Object.keys(screenTimeData).map(name=>`
+    <div class="student-tab ${name===currentSTStudent?'active':''}" onclick="selectSTStudent('${name}')">${name.split(' ')[0]}</div>
+  `).join('');
+
+  const d = screenTimeData[currentSTStudent];
+  renderAlerts();
+  renderPlatformDetail(d);
+  renderLimitControls(d);
+  renderDonut(d);
+  renderHeatmap(d);
+  renderSTCharts(d);
+}
+
+function selectSTStudent(name) {
+  currentSTStudent = name;
+  renderScreenTime();
+}
+
+function renderAlerts() {
+  const alerts = [];
+  Object.entries(screenTimeData).forEach(([name, d]) => {
+    d.platforms.forEach(p => {
+      const limit = d.limits[p.name];
+      const actual = +(p.mins/60).toFixed(1);
+      if(limit && actual > limit) {
+        alerts.push({ name, platform: p.name, actual, limit, icon: p.icon });
+      }
+    });
+  });
+  const high = alerts.filter(a => a.actual > a.limit * 1.5);
+  const med = alerts.filter(a => a.actual <= a.limit * 1.5 && a.actual > a.limit);
+  let html = '';
+  if(high.length) html += high.slice(0,2).map(a=>`
+    <div class="alert-banner alert-red">
+      <span style="font-size:18px">🚨</span>
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--coral)">${a.name} — ${a.platform} ${a.icon}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">
+          Kunlik limit: ${a.limit}h · Haqiqiy: <strong style="color:var(--coral)">${a.actual}h</strong> — limitdan ${Math.round((a.actual/a.limit-1)*100)}% oshib ketdi
+        </div>
+      </div>
+    </div>
+  `).join('');
+  if(med.length) html += med.slice(0,2).map(a=>`
+    <div class="alert-banner alert-amber">
+      <span style="font-size:18px">⚠️</span>
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--amber)">${a.name} — ${a.platform} ${a.icon}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">
+          Kunlik limit: ${a.limit}h · Haqiqiy: <strong style="color:var(--amber)">${a.actual}h</strong>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('st-alerts').innerHTML = html;
+}
+
+function renderPlatformDetail(d) {
+  const total = d.platforms.reduce((s,p)=>s+p.mins,0);
+  document.getElementById('platform-detail').innerHTML = d.platforms.map(p=>{
+    const hrs = (p.mins/60).toFixed(1);
+    const pct = Math.round(p.mins/total*100);
+    const limit = d.limits[p.name];
+    const over = limit && (p.mins/60) > limit;
+    return `
+      <div class="platform-row">
+        <div class="app-icon" style="background:${p.bg}">${p.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;font-weight:500">${p.name}</span>
+            <span style="font-size:10px;padding:1px 6px;border-radius:20px;background:${p.cat==="foydali"?'rgba(62,207,142,0.15)':p.cat==="chalg'ituvchi"?'rgba(255,107,107,0.15)':'rgba(138,138,158,0.15)'};color:${p.cat==="foydali"?'var(--green)':p.cat==="chalg'ituvchi"?'var(--coral)':'var(--muted)'}">${p.cat}</span>
+            ${over?`<span style="font-size:10px;color:var(--coral)">⚠ limitdan oshdi</span>`:''}
+          </div>
+          <div style="margin-top:4px">
+            <div class="progress-bar" style="height:5px">
+              <div class="progress-fill" style="width:${pct}%;background:${p.color}"></div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right;min-width:50px">
+          <div style="font-size:13px;font-weight:600;color:${over?'var(--coral)':p.cat==="foydali"?'var(--green)':'var(--muted)'}">${hrs}h</div>
+          <div style="font-size:10px;color:var(--dim)">${pct}%</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderLimitControls(d) {
+  document.getElementById('limit-controls').innerHTML = d.platforms.map(p=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:12px;flex:1;color:var(--muted)">${p.icon} ${p.name}</span>
+      <input class="limit-input" type="number" min="0" max="12" step="0.5"
+        value="${d.limits[p.name]||2}"
+        onchange="updateLimit('${p.name}',this.value)"
+        title="Soatlik limit">
+      <span style="font-size:11px;color:var(--dim)">h</span>
+    </div>
+  `).join('');
+}
+
+function updateLimit(platform, val) {
+  screenTimeData[currentSTStudent].limits[platform] = parseFloat(val);
+  renderScreenTime();
+}
+
+function renderDonut(d) {
+  const canvas = document.getElementById('donut-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,120,120);
+  const total = d.platforms.reduce((s,p)=>s+p.mins,0);
+  let startAngle = -Math.PI/2;
+  d.platforms.forEach(p => {
+    const slice = (p.mins/total)*Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(60,60);
+    ctx.arc(60,60,52,startAngle,startAngle+slice);
+    ctx.closePath();
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = 0.85;
+    ctx.fill();
+    startAngle += slice;
+  });
+  // donut hole
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(60,60,34,0,Math.PI*2);
+  ctx.fillStyle = '#15161e'; ctx.fill();
+  document.getElementById('donut-total').textContent = d.total.toFixed(1);
+}
+
+function renderHeatmap(d) {
+  const colors = ['rgba(255,255,255,0.05)','rgba(56,189,248,0.4)','rgba(255,107,107,0.45)'];
+  const intensity = d.heatmap;
+  const type = d.heatType;
+  document.getElementById('st-heatmap').innerHTML = intensity.map((v,i)=>{
+    const base = type[i]===1?'rgba(62,207,142,':'type[i]===2'?'rgba(255,107,107,':v===0?'rgba(255,255,255,0.04)':'rgba(124,110,245,';
+    let bg;
+    if(v===0) bg='rgba(255,255,255,0.04)';
+    else if(type[i]===1) bg=`rgba(56,189,248,${Math.min(v*0.12,0.7)})`;
+    else if(type[i]===2) bg=`rgba(255,107,107,${Math.min(v*0.1,0.65)})`;
+    else bg=`rgba(245,166,35,${Math.min(v*0.1,0.5)})`;
+    return `<div class="heat-cell" style="background:${bg}" title="${i}:00 — ${v>0?v+'x faollik':'faolsiz'}"></div>`;
+  }).join('');
+}
+
+function renderSTCharts(d) {
+  drawWeekChart(d);
+  drawRatioChart(d);
+}
+
+function drawWeekChart(d) {
+  const canvas = document.getElementById('st-week-chart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth;
+  const h = canvas.height = 140;
+  ctx.clearRect(0,0,w,h);
+  const days=['Du','Se','Ch','Pa','Ju','Sh','Ya'];
+  const pad={t:10,r:10,b:26,l:34};
+  const gw=w-pad.l-pad.r, gh=h-pad.t-pad.b;
+  const max=Math.max(...d.weekData,4)+1, min=0;
+  const pts = d.weekData.map((v,i)=>({ x:pad.l+i*(gw/(d.weekData.length-1)), y:pad.t+gh-(v-min)/(max-min)*gh }));
+  // grid
+  [2,4,6,8].forEach(v=>{ if(v<=max){
+    const y=pad.t+gh-(v-min)/(max-min)*gh;
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+gw,y); ctx.stroke();
+    ctx.fillStyle='#4a4a62'; ctx.font='10px DM Sans';
+    ctx.textAlign='right'; ctx.fillText(v+'h',pad.l-4,y+3);
+  }});
+  // limit line at 2h
+  const limitY=pad.t+gh-(2-min)/(max-min)*gh;
+  ctx.setLineDash([4,3]); ctx.strokeStyle='rgba(255,107,107,0.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.l,limitY); ctx.lineTo(pad.l+gw,limitY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,107,107,0.6)'; ctx.font='9px DM Sans'; ctx.textAlign='left';
+  ctx.fillText('limit',pad.l+2,limitY-3);
+  // bars
+  const bw=gw/d.weekData.length*0.55;
+  d.weekData.forEach((v,i)=>{
+    const x=pad.l+i*(gw/(d.weekData.length-1))-bw/2;
+    const bh=(v-min)/(max-min)*gh;
+    const over=v>2;
+    ctx.fillStyle=over?'rgba(255,107,107,0.6)':'rgba(62,207,142,0.5)';
+    ctx.beginPath(); ctx.roundRect(x,pad.t+gh-bh,bw,bh,3); ctx.fill();
+    ctx.fillStyle='#4a4a62'; ctx.font='10px DM Sans'; ctx.textAlign='center';
+    ctx.fillText(days[i],pad.l+i*(gw/(d.weekData.length-1)),h-6);
+  });
+}
+
+function drawRatioChart(d) {
+  const canvas = document.getElementById('st-ratio-chart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth;
+  const h = canvas.height = 140;
+  ctx.clearRect(0,0,w,h);
+  const useful = d.platforms.filter(p=>p.cat==='foydali').reduce((s,p)=>s+p.mins,0);
+  const waste = d.platforms.filter(p=>p.cat==="chalg'ituvchi").reduce((s,p)=>s+p.mins,0);
+  const neutral = d.platforms.filter(p=>p.cat==='neytral').reduce((s,p)=>s+p.mins,0);
+  const total = useful+waste+neutral||1;
+  const items=[
+    {label:'Foydali',val:useful,color:'#3ecf8e'},
+    {label:"Chalg'ituvchi",val:waste,color:'#ff6b6b'},
+    {label:'Neytral',val:neutral,color:'#8a8a9e'},
+  ];
+  const barH=28, pad={t:14,l:80,r:14,b:14};
+  items.forEach((item,i)=>{
+    const y=pad.t+i*(barH+12);
+    const bw=(item.val/total)*(w-pad.l-pad.r);
+    ctx.fillStyle='rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.roundRect(pad.l,y,w-pad.l-pad.r,barH,4); ctx.fill();
+    if(bw>0){
+      ctx.fillStyle=item.color; ctx.globalAlpha=0.75;
+      ctx.beginPath(); ctx.roundRect(pad.l,y,bw,barH,4); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    ctx.fillStyle='#8a8a9e'; ctx.font='11px DM Sans'; ctx.textAlign='right';
+    ctx.fillText(item.label,pad.l-6,y+barH/2+4);
+    ctx.fillStyle=item.color; ctx.font='11px DM Sans'; ctx.textAlign='left';
+    ctx.fillText(Math.round(item.val/total*100)+'%',pad.l+bw+6,y+barH/2+4);
+  });
+}
+
+async function stAIAdvice(prefill) {
+  if(prefill) document.getElementById('st-question').value = prefill;
+  const q = document.getElementById('st-question').value.trim();
+  if(!q) return alert('Savol yozing');
+
+  const d = screenTimeData[currentSTStudent];
+  const platforms = d.platforms.map(p=>`${p.name}(${(p.mins/60).toFixed(1)}h,${p.cat})`).join(', ');
+
+  showLoading('Ekran vaqti tahlil qilinmoqda...');
+  const prompt = `Sen maktab o'qituvchisiga yordam beruvchi AI assistantsan. O'zbek tilida amaliy maslahat ber.
+
+O'quvchi: ${currentSTStudent}
+Bugungi ekran vaqti: ${d.total}h
+Platformalar: ${platforms}
+SDL darajasi: ${students.find(s=>s.name===currentSTStudent)?.sdl||70}%
+
+O'qituvchining savoli: ${q}
+
+Connectivism va SDL nazariyasi asosida, 3-4 paragrafda:
+1. Muammoni sharhlash (ekran vaqti o'rganishga qanday ta'sir qilmoqda)
+2. Chalg'ituvchi vaqtni o'quv faoliyatiga aylantirish usullari
+3. O'quvchi uchun konkret haftalik reja
+4. O'qituvchi va ota-ona uchun amaliy qadamlar`;
+
+  try {
+    const res = await callClaude(prompt);
+    document.getElementById('st-ai-response').innerHTML = `<div class="response-card"><p>${res.replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')}</p></div>`;
+  } catch(e) {
+    document.getElementById('st-ai-response').innerHTML = `<div class="response-card"><p style="color:var(--coral)">Xatolik yuz berdi</p></div>`;
+  }
+  hideLoading();
+}
+
+// patch renderDonut to also render limits
+const _origRenderPD = window.renderPlatformDetail;
+window.addEventListener('load', () => {
+  renderSources();
+  renderSDLWeek();
+  renderSDLDimensions();
+  renderStudents();
+  renderScreenTime();
+  setTimeout(() => {
+    drawSDLChart();
+    drawMiniGraph();
+  }, 200);
+});
+window.addEventListener('resize', () => {
+  drawSDLChart();
+  drawMiniGraph();
+});
+</script>
+</body>
+</html>
