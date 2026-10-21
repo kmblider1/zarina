@@ -212,6 +212,7 @@ const state = {
   varkStep:0, varkAnswers:[], varkDone:false,
   chatInput:'', chatMessages:[], isAITyping:false,
   selectedKgNode:null,
+  data:null,
 };
 state.chatMessages = [{ type:'ai', text:I18N[state.lang].aiWelcome, time:'09:00' }];
 
@@ -230,6 +231,21 @@ async function currentUid(){
   try { const { data } = await sb.auth.getUser(); return data.user ? data.user.id : null; } catch(e){ return null; }
 }
 
+// Dashboard/SDL/Ekran vaqti uchun bazadan jonli ma'lumot yuklaydi
+async function loadData(){
+  if(!sb){ state.data=null; return; }
+  try{
+    const since=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
+    const today=new Date().toISOString().slice(0,10);
+    const [a,b,c]=await Promise.all([
+      sb.from('study_logs').select('topic,source,minutes,log_date').gte('log_date',since).order('log_date'),
+      sb.from('screen_time').select('app_name,category,minutes,log_date').eq('log_date',today),
+      sb.from('sdl_scores').select('week,score,study_minutes').order('week'),
+    ]);
+    state.data={ studyLogs:a.data||[], screen:b.data||[], sdl:c.data||[] };
+  }catch(e){ state.data=null; }
+}
+
 async function doLogin(){
   if(!state.role){ alert('Rolni tanlang'); return; }
   if(sb){
@@ -238,6 +254,7 @@ async function doLogin(){
       if(error){ alert('Email yoki parol xato'); return; }
       const { data:prof } = await sb.from('profiles').select('role,name,lang').eq('id', data.user.id).single();
       if(prof){ if(prof.role) state.role = prof.role; if(prof.lang) state.lang = prof.lang; }
+      await loadData();
     } catch(e){ /* tarmoq xatosi — demo rejimda davom */ }
   }
   state.screen = state.role === 'student' ? 'consent' : 'dashboard';
@@ -263,7 +280,7 @@ async function saveVark(){
 
 async function doLogout(){
   if(sb){ try { await sb.auth.signOut(); } catch(e){} }
-  Object.assign(state,{screen:'login',role:null,consentChecked:false,varkStep:0,varkAnswers:[],varkDone:false,selectedKgNode:null});
+  Object.assign(state,{screen:'login',role:null,consentChecked:false,varkStep:0,varkAnswers:[],varkDone:false,selectedKgNode:null,data:null});
   render();
 }
 
@@ -326,9 +343,54 @@ function computeVals() {
 
   // dashboard
   const dayLabels = {uz:['Du','Se','Ch','Pa','Ju','Sh','Ya'],ru:['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],en:['Mon','Tue','Wed','Thu','Fri','Sat','Sun']}[lang];
-  const appRaw = [{icon:'💻',name:'VS Code',mins:135,type:'productive'},{icon:'📓',name:'Notion',mins:90,type:'productive'},{icon:'▶️',name:'YouTube',mins:45,type:'neutral'},{icon:'📱',name:'Instagram',mins:32,type:'distraction'},{icon:'📖',name:'Coursera',mins:28,type:'productive'}];
+
+  // ── Supabase jonli ma'lumot (bo'lsa demo o'rniga ishlatiladi) ──
+  const LD = (state.data && (state.data.studyLogs.length || state.data.sdl.length || state.data.screen.length)) ? state.data : null;
+  const todayKey = new Date().toISOString().slice(0,10);
+  let liveHrs=null, liveDayLabels=null, liveApps=null, liveSdl=null, liveSdlVals=null, liveSdlTimes=null;
+  let liveTodayMin=null, liveTopics=null, liveStreak=null, weeklyTotalStr=null;
+  let liveTimeCards=null, liveDonut=null, donutCenter='5h';
+  if(LD){
+    const fm=m=>m>=60?`${Math.floor(m/60)}h ${m%60}min`:`${m}min`;
+    const kf=d=>d.toISOString().slice(0,10);
+    const now=new Date();
+    if(LD.studyLogs.length){
+      const days=[], sums={};
+      for(let i=6;i>=0;i--){ const d=new Date(now); d.setDate(now.getDate()-i); days.push(d); }
+      LD.studyLogs.forEach(r=>{ sums[r.log_date]=(sums[r.log_date]||0)+(r.minutes||0); });
+      liveHrs = days.map(d=>+(((sums[kf(d)]||0)/60).toFixed(1)));
+      liveDayLabels = days.map(d=>dayLabels[(d.getDay()+6)%7]);
+      liveTodayMin = sums[todayKey]||0;
+      liveTopics = new Set(LD.studyLogs.map(r=>r.topic)).size;
+      let s=0; for(let i=0;i<30;i++){ const d=new Date(now); d.setDate(now.getDate()-i); if((sums[kf(d)]||0)>0) s++; else break; } liveStreak=s;
+      weeklyTotalStr=(+liveHrs.reduce((a,b)=>a+b,0).toFixed(1))+'h';
+    }
+    if(LD.screen.length){
+      const im={'VS Code':'💻','Notion':'📓','YouTube':'▶️','Instagram':'📱','Coursera':'📖','Chrome':'🌐'};
+      liveApps = LD.screen.map(r=>({icon:im[r.app_name]||'📱',name:r.app_name,mins:r.minutes||0,type:r.category}));
+      const tot=liveApps.reduce((a,b)=>a+b.mins,0)||1;
+      const prod=liveApps.filter(a=>a.type==='productive').reduce((a,b)=>a+b.mins,0);
+      const dist=liveApps.filter(a=>a.type==='distraction').reduce((a,b)=>a+b.mins,0);
+      const neu=Math.max(0,tot-prod-dist);
+      donutCenter=`${Math.floor(tot/60)}h`;
+      liveTimeCards=[
+        {icon:'⏱️',iconBg:PC+'18',label:lang==='uz'?'Bugun':lang==='ru'?'Сегодня':'Today',value:fm(tot),color:textColor,sub:lang==='uz'?'jami ekran vaqti':lang==='ru'?'всего экранного времени':'total screen time'},
+        {icon:'✅',iconBg:successColor+'18',label:lang==='uz'?'Foydali':lang==='ru'?'Продуктивно':'Productive',value:fm(prod),color:successColor,sub:Math.round(prod/tot*100)+'%'},
+        {icon:'⚠️',iconBg:dangerColor+'18',label:lang==='uz'?"Chalg'ituvchi":lang==='ru'?'Отвлечение':'Distraction',value:fm(dist),color:dangerColor,sub:Math.round(dist/tot*100)+'%'},
+      ];
+      liveDonut=[{label:t.productive,pct:Math.round(prod/tot*100),color:successColor},{label:t.neutral,pct:Math.round(neu/tot*100),color:warningColor},{label:t.distraction,pct:Math.round(dist/tot*100),color:dangerColor}];
+    }
+    if(LD.sdl.length){
+      liveSdlVals=LD.sdl.map(r=>r.score);
+      liveSdl=liveSdlVals[liveSdlVals.length-1];
+      liveSdlTimes=LD.sdl.map(r=>{const m=r.study_minutes||0;return m>=60?`${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}min`:`${m}min`;});
+    }
+  }
+
+  const appRaw = liveApps || [{icon:'💻',name:'VS Code',mins:135,type:'productive'},{icon:'📓',name:'Notion',mins:90,type:'productive'},{icon:'▶️',name:'YouTube',mins:45,type:'neutral'},{icon:'📱',name:'Instagram',mins:32,type:'distraction'},{icon:'📖',name:'Coursera',mins:28,type:'productive'}];
   const fmt = m => m>=60?`${Math.floor(m/60)}h ${m%60}min`:`${m}min`;
-  const appUsage = appRaw.map(a=>({...a,timeLabel:fmt(a.mins),pct:Math.round(a.mins/135*100),barColor:tC(a.type),typeColor:tC(a.type),typeBg:tC(a.type)+'18',typeLabel:t[a.type],iconBg:tC(a.type)+'16'}));
+  const appMax = Math.max(1, ...appRaw.map(a=>a.mins));
+  const appUsage = appRaw.map(a=>({...a,timeLabel:fmt(a.mins),pct:Math.round(a.mins/appMax*100),barColor:tC(a.type),typeColor:tC(a.type),typeBg:tC(a.type)+'18',typeLabel:t[a.type],iconBg:tC(a.type)+'16'}));
   const goalItems = [
     {label:lang==='uz'?"Kunlik o'qish":lang==='ru'?'Ежедневное обучение':'Daily study',value:'3.3/4h',pct:83,color:PC},
     {label:'SDL',value:'87/100',pct:87,color:successColor},
@@ -336,39 +398,42 @@ function computeVals() {
   ];
   const aiTips = {uz:"Bu hafta SDL ko'rsatkichingiz 87 ga yetdi! VS Code'da 2 soatdan ortiq ishlayapsiz — zo'r! Kechqurun 30 daqiqa repetitsiya qiling.",ru:"Ваш SDL достиг 87 на этой неделе! Вы работаете в VS Code более 2 часов — отлично! Уделите 30 минут повторению вечером.",en:"Your SDL score reached 87 this week! 2+ hours in VS Code — great work! Try 30 minutes of review tonight."};
   const statsCards = [
-    {icon:'📚',iconBg:PC+'18',value:lang==='ru'?'3ч 20мин':'3h 20min',label:lang==='uz'?"Bugungi o'qish":lang==='ru'?'Сегодняшнее обучение':"Today's study",change:'+12%',changeColor:successColor,changeBg:successColor+'18'},
-    {icon:'🎯',iconBg:successColor+'18',value:'87',label:lang==='uz'?"SDL Ko'rsatkichi":lang==='ru'?'SDL показатель':'SDL Score',change:'+5',changeColor:successColor,changeBg:successColor+'18'},
-    {icon:'⚡',iconBg:warningColor+'18',value:'12',label:lang==='uz'?'Faol streak':lang==='ru'?'Активная серия':'Active streak',change:lang==='uz'?'kun':lang==='ru'?'дней':'days',changeColor:warningColor,changeBg:warningColor+'18'},
-    {icon:'🔗',iconBg:PC+'18',value:'23',label:lang==='uz'?"O'rganilgan mavzular":lang==='ru'?'Изученные темы':'Topics mastered',change:'+3',changeColor:PC,changeBg:PC+'18'},
+    {icon:'📚',iconBg:PC+'18',value:liveTodayMin!=null?fmt(liveTodayMin):(lang==='ru'?'3ч 20мин':'3h 20min'),label:lang==='uz'?"Bugungi o'qish":lang==='ru'?'Сегодняшнее обучение':"Today's study",change:'+12%',changeColor:successColor,changeBg:successColor+'18'},
+    {icon:'🎯',iconBg:successColor+'18',value:liveSdl!=null?String(liveSdl):'87',label:lang==='uz'?"SDL Ko'rsatkichi":lang==='ru'?'SDL показатель':'SDL Score',change:'+5',changeColor:successColor,changeBg:successColor+'18'},
+    {icon:'⚡',iconBg:warningColor+'18',value:liveStreak!=null?String(liveStreak):'12',label:lang==='uz'?'Faol streak':lang==='ru'?'Активная серия':'Active streak',change:lang==='uz'?'kun':lang==='ru'?'дней':'days',changeColor:warningColor,changeBg:warningColor+'18'},
+    {icon:'🔗',iconBg:PC+'18',value:liveTopics!=null?String(liveTopics):'23',label:lang==='uz'?"O'rganilgan mavzular":lang==='ru'?'Изученные темы':'Topics mastered',change:'+3',changeColor:PC,changeBg:PC+'18'},
   ];
 
   // study bar chart
-  const hrs = [2.5,3.2,1.8,4.0,3.5,2.1,1.4];
-  const BW=420,BH=120,bW=38,bG=16,bPad=20,bInner=86,maxH=5;
+  const hrs = liveHrs || [2.5,3.2,1.8,4.0,3.5,2.1,1.4];
+  const barLabels = liveDayLabels || dayLabels;
+  const BW=420,BH=120,bW=38,bG=16,bPad=20,bInner=86,maxH=Math.max(5,Math.ceil(Math.max(...hrs)));
   let bars='';
   [1,2,3,4].forEach(h=>{const y=10+bInner-(h/maxH)*bInner;bars+=`<line x1="${bPad}" y1="${y}" x2="${BW-bPad}" y2="${y}" stroke="${borderColor}" stroke-width="1" stroke-dasharray="4 4"/><text x="${bPad-4}" y="${y+4}" text-anchor="end" font-size="9" fill="${mutedColor}">${h}h</text>`;});
-  hrs.forEach((h,i)=>{const x=bPad+i*(bW+bG),bh=(h/maxH)*bInner,y=10+bInner-bh,isT=i===6;bars+=`<rect x="${x}" y="${y}" width="${bW}" height="${bh}" rx="5" fill="${isT?PC:PC+'55'}"/><text x="${x+bW/2}" y="${BH-1}" text-anchor="middle" font-size="10" fill="${mutedColor}">${dayLabels[i]}</text>`+(isT?`<text x="${x+bW/2}" y="${y-5}" text-anchor="middle" font-size="11" font-weight="600" fill="${PC}">${h}h</text>`:'');});
+  hrs.forEach((h,i)=>{const x=bPad+i*(bW+bG),bh=(h/maxH)*bInner,y=10+bInner-bh,isT=i===6;bars+=`<rect x="${x}" y="${y}" width="${bW}" height="${bh}" rx="5" fill="${isT?PC:PC+'55'}"/><text x="${x+bW/2}" y="${BH-1}" text-anchor="middle" font-size="10" fill="${mutedColor}">${barLabels[i]}</text>`+(isT?`<text x="${x+bW/2}" y="${y-5}" text-anchor="middle" font-size="11" font-weight="600" fill="${PC}">${h}h</text>`:'');});
   const studyBarChart = `<svg width="100%" height="${BH}" viewBox="0 0 ${BW} ${BH}" style="overflow:visible">${bars}</svg>`;
 
   // sdl gauge
-  const sdlVal=87, GR=44, circ=2*Math.PI*GR;
+  const sdlVal=(liveSdl!=null?liveSdl:87), GR=44, circ=2*Math.PI*GR;
   const sdlGaugeEl = `<div style="position:relative;width:112px;height:112px;margin:0 auto"><svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="${GR}" fill="none" stroke="${borderColor}" stroke-width="10" transform="rotate(-90 56 56)"/><circle cx="56" cy="56" r="${GR}" fill="none" stroke="${PC}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-sdlVal/100)}" transform="rotate(-90 56 56)"/></svg><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center"><div style="font-size:22px;font-weight:700;color:${textColor};letter-spacing:-0.5px">${sdlVal}</div><div style="font-size:10px;color:${mutedColor}">/100</div></div></div>`;
 
   // sdl page
-  const sdlVals=[22,38,45,41,62,74,69,87];
-  const sdlTimes=['3h 20min','4h 05min','3h 15min','2h 50min','4h 30min','3h 55min','3h 10min','4h 15min'];
+  const sdlVals=liveSdlVals||[22,38,45,41,62,74,69,87];
+  const sdlTimes=liveSdlTimes||['3h 20min','4h 05min','3h 15min','2h 50min','4h 30min','3h 55min','3h 10min','4h 15min'];
   const sColor=v=>v>=80?successColor:v>=60?warningColor:dangerColor;
   const sStatus=v=>v>=80?(lang==='uz'?"Zo'r":lang==='ru'?'Отлично':'Excellent'):v>=60?(lang==='uz'?'Yaxshi':lang==='ru'?'Хорошо':'Good'):(lang==='uz'?'Sust':lang==='ru'?'Слабо':'Weak');
-  const sdlRows=sdlVals.map((v,i)=>({week:`H${i+1}`,sdl:v,pct:v,time:sdlTimes[i],color:sColor(v),statusColor:sColor(v),statusBg:sColor(v)+'18',status:sStatus(v)}));
+  const sdlRows=sdlVals.map((v,i)=>({week:`H${i+1}`,sdl:v,pct:v,time:sdlTimes[i]||'',color:sColor(v),statusColor:sColor(v),statusBg:sColor(v)+'18',status:sStatus(v)}));
+  const sdlMax=Math.max(...sdlVals), sdlMaxWk=sdlVals.indexOf(sdlMax)+1;
   const sdlStatCards=[
-    {label:lang==='uz'?'Bu hafta':lang==='ru'?'Эта неделя':'This week',value:'87',color:PC,sub:'/100'},
-    {label:lang==='uz'?'Eng yuqori':lang==='ru'?'Рекорд':'All-time high',value:'92',color:successColor,sub:lang==='uz'?'5-hafta':lang==='ru'?'Неделя 5':'Week 5'},
-    {label:lang==='uz'?"Haftalik o'qish":lang==='ru'?'Часов/нед':'Hours/week',value:'18.5h',color:warningColor,sub:lang==='uz'?'maqsad 20h':lang==='ru'?'цель 20ч':'goal 20h'},
+    {label:lang==='uz'?'Bu hafta':lang==='ru'?'Эта неделя':'This week',value:liveSdl!=null?String(liveSdl):'87',color:PC,sub:'/100'},
+    {label:lang==='uz'?'Eng yuqori':lang==='ru'?'Рекорд':'All-time high',value:String(sdlMax),color:successColor,sub:(lang==='uz'?sdlMaxWk+'-hafta':lang==='ru'?'Неделя '+sdlMaxWk:'Week '+sdlMaxWk)},
+    {label:lang==='uz'?"Haftalik o'qish":lang==='ru'?'Часов/нед':'Hours/week',value:weeklyTotalStr||'18.5h',color:warningColor,sub:lang==='uz'?'maqsad 20h':lang==='ru'?'цель 20ч':'goal 20h'},
   ];
   const LW=560,LH=160,LP=36,LPR=16,LPT=16,LPB=28,LIW=LW-LP-LPR,LIH=LH-LPT-LPB;
-  const lPts=sdlVals.map((v,i)=>[LP+i*(LIW/7),LPT+LIH*(1-v/100)]);
+  const lN=Math.max(1,sdlVals.length-1);
+  const lPts=sdlVals.map((v,i)=>[LP+i*(LIW/lN),LPT+LIH*(1-v/100)]);
   const lPath=lPts.map((p,i)=>(i===0?`M ${p[0]} ${p[1]}`:`L ${p[0]} ${p[1]}`)).join(' ');
-  const lFill=`${lPath} L ${lPts[7][0]} ${LPT+LIH} L ${lPts[0][0]} ${LPT+LIH} Z`;
+  const lFill=`${lPath} L ${lPts[lPts.length-1][0]} ${LPT+LIH} L ${lPts[0][0]} ${LPT+LIH} Z`;
   let lineG='';
   [0,25,50,75,100].forEach(v=>{const y=LPT+LIH*(1-v/100);lineG+=`<line x1="${LP}" y1="${y}" x2="${LW-LPR}" y2="${y}" stroke="${borderColor}" stroke-width="1" stroke-dasharray="4 4"/><text x="${LP-5}" y="${y+4}" text-anchor="end" font-size="9" fill="${mutedColor}">${v}</text>`;});
   let lineDots='';
@@ -413,17 +478,18 @@ function computeVals() {
   const students=stuData.map((s,i)=>({...s,initial:s.name[0],avatarBg:pColors[i]||PC,sdlPct:s.sdl,sdlColor:nc(s.sdl),riskColor:riskL[s.risk].c,riskBg:riskL[s.risk].b,riskLabel:riskL[s.risk].l}));
 
   // screen time
-  const timeCards=[
+  const timeCards=liveTimeCards||[
     {icon:'⏱️',iconBg:PC+'18',label:lang==='uz'?'Bugun':lang==='ru'?'Сегодня':'Today',value:'5h 2min',color:textColor,sub:lang==='uz'?'jami ekran vaqti':lang==='ru'?'всего экранного времени':'total screen time'},
     {icon:'✅',iconBg:successColor+'18',label:lang==='uz'?'Foydali':lang==='ru'?'Продуктивно':'Productive',value:'3h 13min',color:successColor,sub:'64%'},
     {icon:'⚠️',iconBg:dangerColor+'18',label:lang==='uz'?"Chalg'ituvchi":lang==='ru'?'Отвлечение':'Distraction',value:'1h 4min',color:dangerColor,sub:'21%'},
   ];
-  const screenApps=[{icon:'💻',name:'VS Code',mins:135,type:'productive'},{icon:'📓',name:'Notion',mins:90,type:'productive'},{icon:'▶️',name:'YouTube',mins:45,type:'neutral'},{icon:'📱',name:'Instagram',mins:32,type:'distraction'},{icon:'📖',name:'Coursera',mins:28,type:'productive'},{icon:'🌐',name:'Chrome',mins:32,type:'neutral'}]
-    .map(a=>({...a,timeLabel:fmt(a.mins),pct:Math.round(a.mins/135*100),barColor:tC(a.type),typeColor:tC(a.type),typeBg:tC(a.type)+'18',typeLabel:t[a.type]}));
-  const donutSegs=[{label:t.productive,pct:64,color:successColor},{label:t.neutral,pct:15,color:warningColor},{label:t.distraction,pct:21,color:dangerColor}];
+  const screenRaw=liveApps||[{icon:'💻',name:'VS Code',mins:135,type:'productive'},{icon:'📓',name:'Notion',mins:90,type:'productive'},{icon:'▶️',name:'YouTube',mins:45,type:'neutral'},{icon:'📱',name:'Instagram',mins:32,type:'distraction'},{icon:'📖',name:'Coursera',mins:28,type:'productive'},{icon:'🌐',name:'Chrome',mins:32,type:'neutral'}];
+  const scrMax=Math.max(1,...screenRaw.map(a=>a.mins));
+  const screenApps=screenRaw.map(a=>({...a,timeLabel:fmt(a.mins),pct:Math.round(a.mins/scrMax*100),barColor:tC(a.type),typeColor:tC(a.type),typeBg:tC(a.type)+'18',typeLabel:t[a.type]}));
+  const donutSegs=liveDonut||[{label:t.productive,pct:64,color:successColor},{label:t.neutral,pct:15,color:warningColor},{label:t.distraction,pct:21,color:dangerColor}];
   const dc2=2*Math.PI*52; let dOff=0; let donutArcs='';
   donutSegs.forEach(d=>{const dash=(d.pct/100)*dc2,off=-(dOff/100)*dc2+dc2*0.25;dOff+=d.pct;donutArcs+=`<circle cx="70" cy="70" r="52" fill="none" stroke="${d.color}" stroke-width="22" stroke-dasharray="${dash} ${dc2-dash}" stroke-dashoffset="${off}" style="transform:rotate(-90deg);transform-origin:70px 70px"/>`;});
-  const donutChartEl=`<div style="position:relative"><svg width="140" height="140" viewBox="0 0 140 140"><circle cx="70" cy="70" r="52" fill="none" stroke="${borderColor}" stroke-width="22"/>${donutArcs}</svg><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center"><div style="font-size:18px;font-weight:700;color:${textColor}">5h</div><div style="font-size:9px;color:${mutedColor}">total</div></div></div>`;
+  const donutChartEl=`<div style="position:relative"><svg width="140" height="140" viewBox="0 0 140 140"><circle cx="70" cy="70" r="52" fill="none" stroke="${borderColor}" stroke-width="22"/>${donutArcs}</svg><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center"><div style="font-size:18px;font-weight:700;color:${textColor}">${donutCenter}</div><div style="font-size:9px;color:${mutedColor}">total</div></div></div>`;
 
   // vark
   const totalQs=VARK_QS.length, curQ=VARK_QS[Math.min(varkStep,totalQs-1)];
@@ -446,7 +512,7 @@ function computeVals() {
     varkStep,varkDone,varkPct,totalQs,varkQ:curQ?(curQ[lang]||curQ.en):'',varkOpts,
     varkTopType:t.varkTypes[topT],varkDesc:t.varkDescs[topT],varkResultBars,
     navItems,userName,userInitial:userName[0],roleLabel:t[role]||'',currentPageTitle,
-    statsCards,studyBarChart,appUsage,sdlGaugeEl,goalItems,aiTipText:aiTips[lang]||aiTips.en,
+    statsCards,studyBarChart,appUsage,sdlGaugeEl,goalItems,aiTipText:aiTips[lang]||aiTips.en,weeklyTotal:weeklyTotalStr||'18.5h',
     sdlStatCards,sdlLineChart,sdlRows,
     chatMsgs,chatInput,isAITyping,aiSuggestions,
     kgSvgEl,selNode,kgNodeColor:selNode?nc(selNode.mastery):PC,
@@ -531,7 +597,7 @@ function pageDashboard(V){
   </div>
   <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start">
     <div style="display:flex;flex-direction:column;gap:16px">
-      <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div><h3 style="font-size:14px;font-weight:600;color:${V.textColor}">${V.t.weeklyStudy}</h3><p style="font-size:12px;color:${V.mutedColor};margin-top:2px">${V.t.last7days}</p></div><div style="font-size:22px;font-weight:700;color:${V.PC};letter-spacing:-0.5px">18.5h</div></div>${V.studyBarChart}</div>
+      <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div><h3 style="font-size:14px;font-weight:600;color:${V.textColor}">${V.t.weeklyStudy}</h3><p style="font-size:12px;color:${V.mutedColor};margin-top:2px">${V.t.last7days}</p></div><div style="font-size:22px;font-weight:700;color:${V.PC};letter-spacing:-0.5px">${V.weeklyTotal}</div></div>${V.studyBarChart}</div>
       <div style="background:${V.cardBg};border-radius:14px;padding:20px;border:1px solid ${V.borderColor}"><h3 style="font-size:14px;font-weight:600;color:${V.textColor};margin-bottom:14px">${V.t.topApps}</h3><div style="display:flex;flex-direction:column;gap:10px">
         ${V.appUsage.map(a=>`<div style="display:flex;align-items:center;gap:12px"><div style="width:32px;height:32px;border-radius:8px;background:${a.iconBg};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${a.icon}</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:500;color:${V.textColor}">${a.name}</span><span style="font-size:12px;color:${V.mutedColor}">${a.timeLabel}</span></div><div style="height:5px;background:${V.borderColor};border-radius:999px;overflow:hidden"><div style="height:100%;width:${a.pct}%;background:${a.barColor};border-radius:999px"></div></div></div><span style="font-size:10.5px;font-weight:600;color:${a.typeColor};background:${a.typeBg};padding:2px 7px;border-radius:999px;flex-shrink:0">${a.typeLabel}</span></div>`).join('')}
       </div></div>

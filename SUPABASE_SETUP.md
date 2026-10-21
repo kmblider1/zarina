@@ -44,7 +44,16 @@ Netlify (index.html)  →  Supabase  (baza + login + AI proxy)  →  Claude API
 
 ---
 
-## 4-qadam — AI chat funksiyasini qo'shish (Edge Function)
+## 4-qadam — Demo ma'lumot (grafiklar uchun)
+
+Dashboard, SDL va Ekran vaqti grafiklari bo'sh bo'lmasligi uchun:
+SQL Editor → **`supabase/seed.sql`** faylini joylab, **Run** bosing.
+Bu demo o'quvchiga 7 kunlik o'qish, bugungi ekran vaqti va 8 haftalik SDL
+ma'lumotini yozadi. *(Qayta ishga tushirsa bo'ladi.)*
+
+---
+
+## 5-qadam — AI chat funksiyasini qo'shish (Edge Function)
 
 **Oson yo'l (panel orqali):**
 1. Chap menyu → **Edge Functions** → **Create a function** → nom: `ai-chat`
@@ -58,7 +67,7 @@ Netlify (index.html)  →  Supabase  (baza + login + AI proxy)  →  Claude API
 
 ---
 
-## 5-qadam — Frontend'ni Supabase'ga ulash
+## 6-qadam — Frontend'ni Supabase'ga ulash
 
 1. Supabase panel → **Settings** → **API** bo'limidan 2 narsani oling:
    - **Project URL** (masalan `https://abcdxyz.supabase.co`)
@@ -74,7 +83,7 @@ Netlify (index.html)  →  Supabase  (baza + login + AI proxy)  →  Claude API
 
 ---
 
-## 6-qadam — Tekshirish
+## 7-qadam — Tekshirish
 
 1. Netlify saytingizni oching → `talaba@pln.uz` / `pln12345` bilan kiring
 2. Endi login **haqiqiy** (Supabase Auth orqali) ishlaydi
@@ -92,11 +101,12 @@ Netlify (index.html)  →  Supabase  (baza + login + AI proxy)  →  Claude API
 | Rol (profil asosida) | ✅ haqiqiy |
 | AI chat (Claude proxy) | ✅ haqiqiy |
 | Rozilik, VARK natija, chat tarixi — bazaga saqlanadi | ✅ haqiqiy |
-| Dashboard / SDL / Ekran vaqti grafiklari | ⏳ hozircha demo ko'rsatkich |
+| Dashboard / SDL / Ekran vaqti grafiklari | ✅ bazadan (`study_logs`, `screen_time`, `sdl_scores`) |
 
-> Dashboard grafiklari hali demo, chunki yangi akkauntда haqiqiy o'quv
-> ma'lumoti yo'q. Keyingi bosqichda `study_logs` va `screen_time` jadvallariga
-> ma'lumot yig'ilib, grafiklar real hisobдан chiziladi.
+> Grafiklar endi `study_logs`, `screen_time`, `sdl_scores` jadvallaridan
+> hisoblanadi (4-qadamdagi `seed.sql` demo ma'lumotni yozadi). Haqiqiy
+> foydalanishda bu jadvallar talaba qaydlari bilan to'ladi va grafik avtomatik
+> yangilanadi. O'qituvchi paneli va Bilim tarmog'i hozircha demo ko'rinishda.
 
 ---
 
