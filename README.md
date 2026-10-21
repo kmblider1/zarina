@@ -53,17 +53,27 @@ ota-onaga ko'rsatib beradi.
 
 ## Texnologiya
 
-Hozircha bitta faylli ilova (`index.html`):
-- Sof HTML + CSS + JavaScript (framework yo'q, tashqi kutubxona kerak emas)
+Frontend — bitta faylli ilova (`index.html`):
+- Sof HTML + CSS + JavaScript (framework yo'q)
 - Grafiklar to'liq SVG bilan chiziladi (bar, gauge, line, donut, knowledge graph)
 - 3 tilli interfeys (UZ / RU / EN)
-- AI javoblari hozircha soxta (mock) — backend ulanganda Claude API'ga o'tadi
+- Supabase sozlanmagan bo'lsa — demo rejimda mustaqil ishlaydi
 
-> **Backend qo'llanmasi:** Frontend va backend qanday bo'linishi, qaysi API
-> endpointlar kerakligi [`FRONTEND_BACKEND.md`](./FRONTEND_BACKEND.md) faylida
-> batafsil yozilgan.
+Backend uchun **2 variant** (ikkalasi ham tayyor):
 
-## Ishga tushirish
+| Variant | Tavsifi | Qo'llanma |
+|---------|---------|-----------|
+| 🟢 **Supabase** (tavsiya) | Bepul Postgres + Auth + Edge Functions. Netlify bilan mukammal. | [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) |
+| 🔵 **PHP + MySQL** | Timeweb kabi umumiy hosting uchun. | [`DEPLOY.md`](./DEPLOY.md) |
+
+> Frontend/backend bo'linishi va API ro'yxati: [`FRONTEND_BACKEND.md`](./FRONTEND_BACKEND.md).
+
+## Joylashuv (deploy)
+
+- **Demo (frontend):** Netlify — `netlify.toml` tayyor, faqat repo'ni ulang
+- **To'liq versiya:** Netlify (frontend) + Supabase (backend) — `SUPABASE_SETUP.md`
+
+## Ishga tushirish (lokal demo)
 
 `index.html` faylini brauzerda oching, yoki oddiy server bilan:
 
@@ -74,10 +84,11 @@ python3 -m http.server 8000
 
 ## Keyingi qadamlar (reja)
 
-- [ ] **Backend** — ma'lumotlarni saqlash (hozir hammasi statik test ma'lumoti)
-- [ ] **Claude API xavfsizligi** — API kalit brauzerda emas, backend orqali
-      (hozirgi `callClaude` to'g'ridan-to'g'ri chaqirilmoqda va ishlamaydi)
-- [ ] **Foydalanuvchi rollari** — talaba / o'qituvchi / ota-ona uchun alohida kirish
-- [ ] **Rozilik (consent)** oqimi — ekran vaqti monitoringiga rasmiy rozilik
+- [x] **Frontend** — 9 ekran, 3 til, grafiklar
+- [x] **Backend (Supabase va PHP)** — auth, rozilik, AI proxy, baza
+- [x] **Claude API xavfsizligi** — kalit faqat serverda (Edge Function / PHP)
+- [x] **Foydalanuvchi rollari** — talaba / o'qituvchi / ota-ona
+- [x] **Rozilik (consent) oqimi**
 - [ ] **Haqiqiy ekran vaqti yig'ish** — qurilma/brauzer integratsiyasi
+- [ ] **Dashboard grafiklarini real ma'lumotga ulash** (`study_logs`, `screen_time`)
 - [ ] **Bilim tarmog'ini avtomatik qurish** — qo'shilgan manbalardan nodes hosil qilish

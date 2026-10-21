@@ -32,6 +32,8 @@
   .kg-node{transition:all .2s}
   input:focus,textarea:focus{border-color:var(--primary)!important;background:#fff!important}
 </style>
+<!-- Supabase JS (baza + auth + edge funksiyalar) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -213,30 +215,30 @@ const state = {
 };
 state.chatMessages = [{ type:'ai', text:I18N[state.lang].aiWelcome, time:'09:00' }];
 
-// ═══════════════════ BACKEND API ═══════════════════
-// http(s) da ishlaganda backend ulanadi; file:// da yoki backend bo'lmasa demo rejim.
-const API_BASE = location.protocol.startsWith('http') ? '/api' : null;
-let authToken = null;
-async function api(path, opts){
-  opts = opts || {};
-  const headers = { 'Content-Type':'application/json' };
-  if(authToken) headers['Authorization'] = 'Bearer ' + authToken;
-  const res = await fetch(API_BASE + path, { ...opts, headers });
-  if(!res.ok){ const e = new Error('API '+res.status); e.status = res.status; throw e; }
-  return res.json();
+// ═══════════════════ SUPABASE BACKEND ═══════════════════
+// Supabase loyihangiz ma'lumotlarini shu yerga yozing (panel → Settings → API).
+// Bo'sh qoldirilsa — demo rejimda ishlaydi (baza kerak emas).
+const SUPABASE_URL = '';       // masalan: https://abcdxyz.supabase.co
+const SUPABASE_ANON_KEY = '';  // "anon public" kaliti (brauzerda ochiq bo'lishi xavfsiz)
+
+let sb = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+async function currentUid(){
+  if(!sb) return null;
+  try { const { data } = await sb.auth.getUser(); return data.user ? data.user.id : null; } catch(e){ return null; }
 }
 
 async function doLogin(){
   if(!state.role){ alert('Rolni tanlang'); return; }
-  if(API_BASE){
+  if(sb){
     try {
-      const r = await api('/auth/login', { method:'POST', body: JSON.stringify({ email:state.email, password:state.password, role:state.role }) });
-      authToken = r.token;
-      if(r.user && r.user.role) state.role = r.user.role;
-    } catch(e){
-      if(e.status === 401){ alert('Email yoki parol xato'); return; }
-      // boshqa xato (backend hali deploy qilinmagan) — demo rejimida davom etamiz
-    }
+      const { data, error } = await sb.auth.signInWithPassword({ email:state.email, password:state.password });
+      if(error){ alert('Email yoki parol xato'); return; }
+      const { data:prof } = await sb.from('profiles').select('role,name,lang').eq('id', data.user.id).single();
+      if(prof){ if(prof.role) state.role = prof.role; if(prof.lang) state.lang = prof.lang; }
+    } catch(e){ /* tarmoq xatosi — demo rejimda davom */ }
   }
   state.screen = state.role === 'student' ? 'consent' : 'dashboard';
   render();
@@ -244,8 +246,24 @@ async function doLogin(){
 
 async function doConsent(){
   if(!state.consentChecked) return;
-  if(API_BASE && authToken){ try { await api('/consent', { method:'POST', body: JSON.stringify({ agreed:true }) }); } catch(e){} }
+  if(sb){ try { const uid = await currentUid(); if(uid) await sb.from('consents').insert({ user_id:uid, agreed:true }); } catch(e){} }
   state.screen = 'dashboard';
+  render();
+}
+
+async function saveVark(){
+  if(!sb) return;
+  try {
+    const uid = await currentUid(); if(!uid) return;
+    const c = {V:0,A:0,R:0,K:0}; state.varkAnswers.forEach(a=>{ if(c[a]!==undefined) c[a]++; });
+    const top = Object.entries(c).sort((x,y)=>y[1]-x[1])[0][0];
+    await sb.from('vark_results').insert({ user_id:uid, top_type:top, v:c.V, a:c.A, r:c.R, k:c.K });
+  } catch(e){}
+}
+
+async function doLogout(){
+  if(sb){ try { await sb.auth.signOut(); } catch(e){} }
+  Object.assign(state,{screen:'login',role:null,consentChecked:false,varkStep:0,varkAnswers:[],varkDone:false,selectedKgNode:null});
   render();
 }
 
@@ -651,14 +669,18 @@ async function sendChat(){
   state.chatMessages=[...state.chatMessages,{type:'user',text:msg,time:timeNow()}];
   state.chatInput=''; state.isAITyping=true; render();
   let reply=null;
-  if(API_BASE && authToken){
-    try { const r = await api('/ai/chat', { method:'POST', body: JSON.stringify({ message:msg, lang }) }); reply = r.reply; } catch(e){}
+  if(sb){
+    try {
+      const { data, error } = await sb.functions.invoke('ai-chat', { body:{ message:msg, lang } });
+      if(!error && data && data.reply) reply = data.reply;
+      const uid = await currentUid();
+      if(uid){ await sb.from('chat_messages').insert([{user_id:uid,role:'user',text:msg},{user_id:uid,role:'ai',text:reply||getAIReply(msg,lang)}]); }
+    } catch(e){}
   }
   const finish = () => {
     state.chatMessages=[...state.chatMessages,{type:'ai',text:reply||getAIReply(msg,lang),time:timeNow()}];
     state.isAITyping=false; render();
   };
-  // backend javobi bo'lsa darhol, bo'lmasa qisqa "yozyapti" effekti bilan
   if(reply!==null) finish(); else setTimeout(finish, 1000+Math.random()*800);
 }
 
@@ -681,9 +703,9 @@ document.addEventListener('click', e=>{
       else { state.varkAnswers=na; state.varkStep++; }
       render(); break;
     }
-    case 'varkContinue': state.screen='dashboard'; render(); break;
+    case 'varkContinue': saveVark(); state.screen='dashboard'; render(); break;
     case 'nav': state.screen=el.dataset.screen; render(); break;
-    case 'logout': Object.assign(state,{screen:'login',role:null,consentChecked:false,varkStep:0,varkAnswers:[],varkDone:false,selectedKgNode:null}); render(); break;
+    case 'logout': doLogout(); break;
     case 'chatSend': sendChat(); break;
     case 'suggest': state.chatInput=el.dataset.label; sendChat(); break;
   }
